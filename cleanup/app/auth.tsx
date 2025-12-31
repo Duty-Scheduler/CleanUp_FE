@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import Button from '@/components/ui/Button';
 export default function AuthScreen() {
   const [activeTab, setActiveTab] = useState(0);
   const [rememberMe, setRememberMe] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
   // Login state
   const [loginEmail, setLoginEmail] = useState('');
@@ -32,7 +34,14 @@ export default function AuthScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleLogin = () => {
-    router.replace('/(tabs)');
+    setLoginError('');
+    
+    if (loginEmail === 'test' && loginPassword === 'test') {
+      router.replace('/(tabs)');
+    } else {
+      setLoginError('Invalid username or password');
+      Alert.alert('Login Failed', 'Please use username: test and password: test');
+    }
   };
 
   const handleSignup = () => {
@@ -70,20 +79,21 @@ export default function AuthScreen() {
             // Login Form
             <>
               <Input
-                label="Email"
-                placeholder="Loisbecket@gmail.com"
+                label="Username"
+                placeholder="test"
                 value={loginEmail}
                 onChangeText={setLoginEmail}
-                keyboardType="email-address"
                 autoCapitalize="none"
+                error={loginError ? ' ' : undefined}
               />
 
               <Input
                 label="Password"
-                placeholder="*******"
+                placeholder="test"
                 value={loginPassword}
                 onChangeText={setLoginPassword}
                 isPassword
+                error={loginError}
               />
 
               <View style={styles.optionsRow}>
