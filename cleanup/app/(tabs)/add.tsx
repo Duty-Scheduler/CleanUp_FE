@@ -1,48 +1,63 @@
 
 
+import { taskService } from '@/api/services/tasks';
+import { teamService } from '@/api/services/teams';
 import DateRow from '@/components/ui/DateRow';
 import GroupPicker, { Group } from '@/components/ui/GroupPicker';
 import { Member } from '@/components/ui/MemberPicker';
 import MonthCalendar from '@/components/ui/MonthCalendar';
 import PageHeader from '@/components/ui/PageHeader';
 import TimePicker from '@/components/ui/TimePicker';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AddScreen() {
+  // expo-router navigation
   // GroupPicker state
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showGroupPicker, setShowGroupPicker] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<Member[]>([]);
-  // Dummy data
-  const groups: Group[] = [
-    {
-      id: 'g1',
-      name: 'Nhóm A',
-      members: [
-        { id: 'u1', name: 'Nguyễn Văn A' },
-        { id: 'u2', name: 'Trần Thị B' },
-        { id: 'u3', name: 'Lê Văn C' },
-      ],
-    },
-    {
-      id: 'g2',
-      name: 'Nhóm B',
-      members: [
-        { id: 'u4', name: 'Phạm Văn D' },
-        { id: 'u5', name: 'Hoàng Thị E' },
-      ],
-    },
-    {
-      id: 'g3',
-      name: 'Nhóm C',
-      members: [
-        { id: 'u6', name: 'Ngô Văn F' },
-        { id: 'u7', name: 'Đỗ Thị G' },
-      ],
-    },
-  ];
+  // Group data from API
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+
+  React.useEffect(() => {
+    const fetchGroups = async () => {
+      setGroupsLoading(true);
+      try {
+        const teams = await teamService.getAll();
+        // Lấy member cho từng team
+        const groupList: Group[] = await Promise.all(
+          teams.map(async (team: any) => {
+            let members: Member[] = [];
+            try {
+              const teamMembers = await teamService.getMembers(team.id);
+              members = teamMembers.map((tm: any) => ({
+                id: tm.user?.id || tm.id,
+                name: tm.user?.name || 'No name',
+              }));
+            } catch { }
+            return {
+              id: team.id,
+              name: team.name,
+              members,
+            };
+          })
+        );
+        setGroups(groupList);
+      } catch (e) {
+        Alert.alert('Error', 'Failed to load groups');
+      } finally {
+        setGroupsLoading(false);
+      }
+    };
+    fetchGroups();
+  }, []);
   // TimePicker state
   const [showTimePicker, setShowTimePicker] = useState<'start' | 'end' | null>(null);
   const [startHour, setStartHour] = useState(12);
@@ -328,9 +343,15 @@ export default function AddScreen() {
 
         {/* People */}
         <Section title="People">
-          <TouchableOpacity style={styles.addPeopleBtn} onPress={() => setShowGroupPicker(true)}>
-            <Text style={styles.addPeopleText}>+</Text>
-          </TouchableOpacity>
+          {groupsLoading ? (
+            <Text style={{ color: '#888', marginBottom: 8 }}>Loading groups...</Text>
+          ) : groups.length === 0 ? (
+            <Text style={{ color: '#888', marginBottom: 8 }}>You have no group. Please join or create a group to add tasks.</Text>
+          ) : (
+            <TouchableOpacity style={styles.addPeopleBtn} onPress={() => setShowGroupPicker(true)}>
+              <Text style={styles.addPeopleText}>+</Text>
+            </TouchableOpacity>
+          )}
           {/* Hiển thị nhóm và thành viên đã chọn */}
           {selectedGroup && (
             <View style={{ marginTop: 12 }}>
@@ -361,22 +382,114 @@ export default function AddScreen() {
         </Section>
 
         {/* Description */}
+        <Section title="Title">
+          <TextInput
+            style={[styles.textArea, { height: 48 }]}
+            placeholder="Enter task title"
+            value={title}
+            onChangeText={setTitle}
+            maxLength={100}
+          />
+        </Section>
         <Section title="Description">
           <TextInput
             style={styles.textArea}
             placeholder="Add a short description"
             multiline
+            value={description}
+            onChangeText={setDescription}
+            maxLength={500}
           />
         </Section>
       </ScrollView>
 
       {/* Bottom Actions */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.cancelBtn}>
+        <TouchableOpacity
+          style={styles.cancelBtn}
+          onPress={() => {
+            // Reset all form states
+            setTitle('');
+            setDescription('');
+            setSelectedGroup(null);
+            setSelectedMembers([]);
+            setShowGroupPicker(false);
+            setStartHour(12);
+            setStartMinute(0);
+            setEndHour(14);
+            setEndMinute(0);
+            setSelectedStartDate(0);
+            setShowStartCalendar(false);
+            setOtherStartDate(null);
+            setTempStartDate(today);
+            setSelectedEndDate(0);
+            setShowEndCalendar(false);
+            setOtherEndDate(null);
+            setTempEndDate(today);
+            setShowMonthPickerStart(false);
+            setShowMonthPickerEnd(false);
+            setPriority('low');
+            router.replace('/(tabs)');
+          }}
+        >
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.saveBtn}>
-          <Text style={styles.saveText}>Save</Text>
+        <TouchableOpacity
+          style={[styles.saveBtn, (
+            loading ||
+            groups.length === 0 ||
+            !title.trim() ||
+            !selectedGroup ||
+            selectedMembers.length === 0
+          ) && { backgroundColor: '#BDBDBD' }]}
+          disabled={
+            loading ||
+            groups.length === 0 ||
+            !title.trim() ||
+            !selectedGroup ||
+            selectedMembers.length === 0
+          }
+          onPress={async () => {
+            if (!title.trim()) {
+              Alert.alert('Validation', 'Please enter a title');
+              return;
+            }
+            if (groups.length === 0) {
+              Alert.alert('Validation', 'You have no group. Please join or create a group to add tasks.');
+              return;
+            }
+            if (!selectedGroup) {
+              Alert.alert('Validation', 'Please select a group');
+              return;
+            }
+            if (selectedMembers.length === 0) {
+              Alert.alert('Validation', 'Please select at least one member');
+              return;
+            }
+            setLoading(true);
+            try {
+              // Build request
+              const scheduledDate = (otherStartDate || startDateValue).toISOString().slice(0, 10);
+              const scheduledTime = `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
+              const req = {
+                title: title.trim(),
+                description: description.trim(),
+                teamId: selectedGroup.id,
+                assigneeIds: selectedMembers.map(m => m.id),
+                scheduledDate,
+                scheduledTime,
+              };
+              await taskService.create(req);
+              Alert.alert('Success', 'Task created successfully!');
+              // Optionally: reset form or navigate
+            } catch (e) {
+              Alert.alert('Error', 'Failed to create task.');
+            } finally {
+              setLoading(false);
+            }
+          }}
+        >
+          <Text style={styles.saveText}>{loading ? 'Saving...' : 'Save'}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
