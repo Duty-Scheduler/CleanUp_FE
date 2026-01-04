@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,9 @@ import AuthHeader from '@/components/ui/AuthHeader';
 import TabSwitch from '@/components/ui/TabSwitch';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { useAppSelector } from '@/store/hooks';
+import { isGoogleConfigured } from '@/config/google';
 
 export default function AuthScreen() {
   const [activeTab, setActiveTab] = useState(0);
@@ -33,6 +36,32 @@ export default function AuthScreen() {
   const [signupPassword, setSignupPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  // Google Auth
+  const { signInWithGoogle, renderGoogleButton, isLoading: googleLoading, error: googleError, isAuthenticated, isReady } = useGoogleAuth();
+  const authState = useAppSelector((state) => state.auth);
+
+  // Navigate to home when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated]);
+
+  // Render Google button when ready
+  useEffect(() => {
+    if (Platform.OS === 'web' && isReady) {
+      renderGoogleButton('google-signin-button');
+      renderGoogleButton('google-signup-button');
+    }
+  }, [isReady, activeTab, renderGoogleButton]);
+
+  // Show error if Google login fails
+  useEffect(() => {
+    if (googleError) {
+      Alert.alert('Login Failed', googleError);
+    }
+  }, [googleError]);
+
   const handleLogin = () => {
     setLoginError('');
     
@@ -48,8 +77,16 @@ export default function AuthScreen() {
     router.replace('/(tabs)');
   };
 
-  const handleGoogleLogin = () => {
-    // Implement Google login
+  const handleGoogleLogin = async () => {
+    if (!isGoogleConfigured()) {
+      Alert.alert(
+        'Chưa cấu hình Google',
+        'Vui lòng cập nhật Google Client ID trong file config/google.ts',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    await signInWithGoogle();
   };
 
   const handleForgotPassword = () => {
@@ -120,12 +157,21 @@ export default function AuthScreen() {
                 <View style={styles.divider} />
               </View>
 
-              <Button
-                title="Continue with Google"
-                onPress={handleGoogleLogin}
-                variant="google"
-                icon={<GoogleIcon />}
-              />
+              {/* Google Sign-In Button Container for Web */}
+              {Platform.OS === 'web' ? (
+                <View style={styles.googleButtonContainer}>
+                  <div id="google-signin-button" style={{ display: 'flex', justifyContent: 'center' }} />
+                </View>
+              ) : (
+                <Button
+                  title="Continue with Google"
+                  onPress={handleGoogleLogin}
+                  variant="google"
+                  icon={<GoogleIcon />}
+                  loading={googleLoading}
+                  disabled={googleLoading}
+                />
+              )}
             </>
           ) : (
             // Signup Form
@@ -182,6 +228,28 @@ export default function AuthScreen() {
               />
 
               <Button title="Sign Up" onPress={handleSignup} style={styles.submitButton} />
+
+              <View style={styles.dividerContainer}>
+                <View style={styles.divider} />
+                <Text style={styles.dividerText}>Or sign up with</Text>
+                <View style={styles.divider} />
+              </View>
+
+              {/* Google Sign-Up Button Container for Web */}
+              {Platform.OS === 'web' ? (
+                <View style={styles.googleButtonContainer}>
+                  <div id="google-signup-button" style={{ display: 'flex', justifyContent: 'center' }} />
+                </View>
+              ) : (
+                <Button
+                  title="Continue with Google"
+                  onPress={handleGoogleLogin}
+                  variant="google"
+                  icon={<GoogleIcon />}
+                  loading={googleLoading}
+                  disabled={googleLoading}
+                />
+              )}
             </>
           )}
         </View>
@@ -269,6 +337,10 @@ const styles = StyleSheet.create({
   },
   nameInput: {
     flex: 1,
+  },
+  googleButtonContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   googleIcon: {
     width: 24,

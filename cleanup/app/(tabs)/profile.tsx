@@ -1,16 +1,47 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import PageHeader from '@/components/ui/PageHeader';
 import ActivityItem from '@/components/ui/ActivityItem';
 import SettingItem from '@/components/ui/SettingItem';
-import { currentUser, myTeams, recentActivities } from '@/data/mockData';
+import { currentUser as mockUser, myTeams, recentActivities } from '@/data/mockData';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { logout } from '@/store/slices/authSlice';
 
 export default function ProfileScreen() {
+  const dispatch = useAppDispatch();
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  
   const [notifications, setNotifications] = useState(true);
   const [pushAlerts, setPushAlerts] = useState(false);
   const [soundEffects, setSoundEffects] = useState(true);
+
+  // Use Redux user if authenticated, otherwise use mock user
+  const displayUser = isAuthenticated && user ? {
+    name: `${user.name} ${user.lastname || ''}`.trim(),
+    email: user.email,
+    avatar: user.avatar,
+  } : mockUser;
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Log out',
+      'Are you sure you want to log out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log out',
+          style: 'destructive',
+          onPress: async () => {
+            await dispatch(logout());
+            router.replace('/auth');
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -25,17 +56,17 @@ export default function ProfileScreen() {
         <View style={styles.profileCard}>
           <View style={styles.profileInfo}>
             <View style={styles.avatarContainer}>
-              {currentUser.avatar ? (
-                <Image source={{ uri: currentUser.avatar }} style={styles.avatar} />
+              {displayUser.avatar ? (
+                <Image source={{ uri: displayUser.avatar }} style={styles.avatar} />
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>{currentUser.name.charAt(0)}</Text>
+                  <Text style={styles.avatarText}>{displayUser.name.charAt(0)}</Text>
                 </View>
               )}
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{currentUser.name}</Text>
-              <Text style={styles.userEmail}>{currentUser.email}</Text>
+              <Text style={styles.userName}>{displayUser.name}</Text>
+              <Text style={styles.userEmail}>{displayUser.email}</Text>
             </View>
           </View>
           
@@ -115,7 +146,7 @@ export default function ProfileScreen() {
           <SettingItem
             title="Log out"
             isDestructive
-            onPress={() => {}}
+            onPress={handleLogout}
           />
         </View>
       </ScrollView>
