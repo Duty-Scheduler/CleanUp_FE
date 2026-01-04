@@ -1,14 +1,14 @@
-import React, { useRef, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useRef } from 'react';
 import {
-  View,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Modal,
-  Dimensions,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 const DATE_ITEM_WIDTH = 50;
@@ -25,6 +25,7 @@ interface MonthCalendarProps {
   onSelectMonth: (month: number, year: number) => void;
   showMonthPicker: boolean;
   setShowMonthPicker: (show: boolean) => void;
+  minDate?: Date;
 }
 
 const MONTHS = [
@@ -40,6 +41,7 @@ export default function MonthCalendar({
   onSelectMonth,
   showMonthPicker,
   setShowMonthPicker,
+  minDate,
 }: MonthCalendarProps) {
   const scrollRef = useRef<ScrollView>(null);
   const today = new Date();
@@ -49,10 +51,10 @@ export default function MonthCalendar({
     const year = selectedDate.getFullYear();
     const month = selectedDate.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
     const dates: DateItem[] = [];
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
+      if (minDate && date <= minDate) continue;
       dates.push({
         day,
         dayName: DAY_NAMES[date.getDay()].substring(0, 2),
@@ -104,34 +106,43 @@ export default function MonthCalendar({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.datesContainer}
       >
-        {dates.map((item) => (
-          <TouchableOpacity
-            key={item.day}
-            style={[
-              styles.dateItem,
-              isSelected(item.date) && styles.selectedDate,
-              isToday(item.date) && !isSelected(item.date) && styles.todayDate,
-            ]}
-            onPress={() => onSelectDate(item.date)}
-          >
-            <Text
+        {dates.map((item) => {
+          const disabled = minDate && item.date <= minDate;
+          return (
+            <TouchableOpacity
+              key={item.day}
               style={[
-                styles.dayNumber,
-                isSelected(item.date) && styles.selectedText,
+                styles.dateItem,
+                isSelected(item.date) && styles.selectedDate,
+                isToday(item.date) && !isSelected(item.date) && styles.todayDate,
+                disabled && { opacity: 0.4 }
               ]}
+              onPress={() => {
+                if (!disabled) onSelectDate(item.date);
+              }}
+              disabled={disabled}
             >
-              {item.day}
-            </Text>
-            <Text
-              style={[
-                styles.dayName,
-                isSelected(item.date) && styles.selectedDayName,
-              ]}
-            >
-              {item.dayName}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                style={[
+                  styles.dayNumber,
+                  isSelected(item.date) && styles.selectedText,
+                  disabled && { color: '#bbb' }
+                ]}
+              >
+                {item.day}
+              </Text>
+              <Text
+                style={[
+                  styles.dayName,
+                  isSelected(item.date) && styles.selectedDayName,
+                  disabled && { color: '#bbb' }
+                ]}
+              >
+                {item.dayName}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* Month Picker Modal */}
@@ -148,7 +159,7 @@ export default function MonthCalendar({
         >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Month</Text>
-            
+
             {/* Year Tabs */}
             <View style={styles.yearTabs}>
               {years.map((year) => (
@@ -174,28 +185,37 @@ export default function MonthCalendar({
 
             {/* Month Grid */}
             <View style={styles.monthGrid}>
-              {MONTHS.map((month, index) => (
-                <TouchableOpacity
-                  key={month}
-                  style={[
-                    styles.monthItem,
-                    selectedDate.getMonth() === index && styles.selectedMonth,
-                  ]}
-                  onPress={() => {
-                    onSelectMonth(index, selectedDate.getFullYear());
-                    setShowMonthPicker(false);
-                  }}
-                >
-                  <Text
+              {MONTHS.map((month, index) => {
+                let disabled = false;
+                if (minDate) {
+                  const year = selectedDate.getFullYear();
+                  if (year < minDate.getFullYear()) disabled = true;
+                  else if (year === minDate.getFullYear() && index < minDate.getMonth()) disabled = true;
+                }
+                if (disabled) return null;
+                return (
+                  <TouchableOpacity
+                    key={month}
                     style={[
-                      styles.monthItemText,
-                      selectedDate.getMonth() === index && styles.selectedMonthText,
+                      styles.monthItem,
+                      selectedDate.getMonth() === index && styles.selectedMonth,
                     ]}
+                    onPress={() => {
+                      onSelectMonth(index, selectedDate.getFullYear());
+                      setShowMonthPicker(false);
+                    }}
                   >
-                    {month.substring(0, 3)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.monthItemText,
+                        selectedDate.getMonth() === index && styles.selectedMonthText,
+                      ]}
+                    >
+                      {month.substring(0, 3)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         </TouchableOpacity>

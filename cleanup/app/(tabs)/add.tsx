@@ -1,36 +1,421 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+
+
+import DateRow from '@/components/ui/DateRow';
+import MonthCalendar from '@/components/ui/MonthCalendar';
+import PageHeader from '@/components/ui/PageHeader';
+import React, { useState } from 'react';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AddScreen() {
+  const today = new Date();
+  const [selectedStartDate, setSelectedStartDate] = useState(0);
+  const [showStartCalendar, setShowStartCalendar] = useState(false);
+  const [otherStartDate, setOtherStartDate] = useState<Date | null>(null);
+  const [tempStartDate, setTempStartDate] = useState<Date>(otherStartDate || today);
+  const [selectedEndDate, setSelectedEndDate] = useState(0);
+  const [showEndCalendar, setShowEndCalendar] = useState(false);
+  const [otherEndDate, setOtherEndDate] = useState<Date | null>(null);
+  const [tempEndDate, setTempEndDate] = useState<Date>(otherEndDate || today);
+  const [showMonthPickerStart, setShowMonthPickerStart] = useState(false);
+  const [showMonthPickerEnd, setShowMonthPickerEnd] = useState(false);
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('low');
+
+  interface SectionProps {
+    title: string;
+    children: React.ReactNode;
+  }
+
+  const Section = ({ title, children }: SectionProps) => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {children}
+    </View>
+  );
+
+  interface TimeBlockProps {
+    label: string;
+    value: string;
+  }
+
+  const TimeBlock = ({ label, value }: TimeBlockProps) => (
+    <View>
+      <Text style={styles.timeLabel}>{label}</Text>
+      <Text style={styles.timeValue}>{value}</Text>
+    </View>
+  );
+
+  interface PriorityChipProps {
+    label: string;
+    color: string;
+    active: boolean;
+    onPress: () => void;
+  }
+
+  const PriorityChip = ({
+    label,
+    color,
+    active,
+    onPress,
+  }: PriorityChipProps) => (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[
+        styles.priorityChip,
+        { backgroundColor: active ? `${color}22` : '#F5F5F5' },
+      ]}
+    >
+      <View style={[styles.dot, { backgroundColor: color }]} />
+      <Text style={styles.priorityText}>{label}</Text>
+    </TouchableOpacity>
+  );
+
+
+  const getDates = (base: Date, other: Date | null) => [
+    { day: `${base.getDate()}`, label: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][base.getDay()] },
+    { day: `${(new Date(base.getFullYear(), base.getMonth(), base.getDate() + 1)).getDate()}`, label: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][(base.getDay() + 1) % 7] },
+    { day: `${(new Date(base.getFullYear(), base.getMonth(), base.getDate() + 2)).getDate()}`, label: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][(base.getDay() + 2) % 7] },
+    other
+      ? { day: `${other.getDate()}`, label: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][other.getDay()] }
+      : { day: 'Other', label: 'Date' },
+  ];
+
+  let startDateValue: Date;
+  if (selectedStartDate === 3 && otherStartDate) startDateValue = otherStartDate;
+  else if (selectedStartDate === 0) startDateValue = today;
+  else if (selectedStartDate === 1) startDateValue = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  else startDateValue = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2);
+
+  const START_DATES = getDates(today, otherStartDate);
+  const END_DATES = getDates(startDateValue, otherEndDate);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Add Task</Text>
-        <Text style={styles.subtitle}>Coming soon</Text>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <PageHeader title={"Let's set the\nschedule easily"} />
+
+        {/* Select Start Date */}
+        <Section title="Select start date">
+          <DateRow
+            dates={START_DATES}
+            selectedIndex={selectedStartDate}
+            onSelect={(index) => {
+              if (index === 3) {
+                setShowStartCalendar(true);
+              } else {
+                setSelectedStartDate(index);
+                if (otherStartDate) setOtherStartDate(null);
+              }
+            }}
+            monthList={[
+              today.getMonth(),
+              today.getMonth(),
+              today.getMonth(),
+              otherStartDate ? otherStartDate.getMonth() : today.getMonth()
+            ]}
+            yearList={[
+              today.getFullYear(),
+              today.getFullYear(),
+              today.getFullYear(),
+              otherStartDate ? otherStartDate.getFullYear() : today.getFullYear()
+            ]}
+          />
+          {/* Modal MonthCalendar for Other Start */}
+          <Modal
+            visible={showStartCalendar}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowStartCalendar(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <MonthCalendar
+                  selectedDate={tempStartDate}
+                  onSelectDate={(date) => setTempStartDate(date)}
+                  onSelectMonth={(month, year) => {
+                    const newDate = new Date(tempStartDate);
+                    newDate.setMonth(month);
+                    newDate.setFullYear(year);
+                    setTempStartDate(newDate);
+                  }}
+                  showMonthPicker={showMonthPickerStart}
+                  setShowMonthPicker={setShowMonthPickerStart}
+                />
+                <View style={styles.modalActions}>
+                  <TouchableOpacity onPress={() => setShowStartCalendar(false)} style={styles.modalCancelBtn}>
+                    <Text style={styles.modalActionText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => {
+                    setOtherStartDate(tempStartDate);
+                    setSelectedStartDate(3);
+                    setShowStartCalendar(false);
+                  }}>
+                    <Text style={styles.modalActionText}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        </Section>
+
+        {/* Select End Date */}
+        <Section title="Select end date">
+          <DateRow
+            dates={END_DATES}
+            selectedIndex={selectedEndDate}
+            onSelect={(index) => {
+              if (index === 3) {
+                setTempEndDate(startDateValue);
+                setShowEndCalendar(true);
+              } else {
+                setSelectedEndDate(index);
+                if (otherEndDate) setOtherEndDate(null);
+              }
+            }}
+            monthList={END_DATES.map((item, idx) => {
+              if (otherEndDate) return otherEndDate.getMonth();
+              return startDateValue.getMonth();
+            })}
+            yearList={END_DATES.map((item, idx) => {
+              if (otherEndDate) return otherEndDate.getFullYear();
+              return startDateValue.getFullYear();
+            })}
+          />
+          {/* Modal MonthCalendar for Other End */}
+          <Modal
+            visible={showEndCalendar}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowEndCalendar(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <MonthCalendar
+                  selectedDate={tempEndDate}
+                  onSelectDate={(date) => setTempEndDate(date)}
+                  onSelectMonth={(month, year) => {
+                    const newDate = new Date(tempEndDate);
+                    newDate.setMonth(month);
+                    newDate.setFullYear(year);
+                    setTempEndDate(newDate);
+                  }}
+                  showMonthPicker={showMonthPickerEnd}
+                  setShowMonthPicker={setShowMonthPickerEnd}
+                  minDate={startDateValue}
+                />
+                <View style={styles.modalActions}>
+                  <TouchableOpacity onPress={() => setShowEndCalendar(false)} style={styles.modalCancelBtn}>
+                    <Text style={styles.modalActionText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => {
+                    setOtherEndDate(tempEndDate);
+                    setSelectedEndDate(3);
+                    setShowEndCalendar(false);
+                  }}>
+                    <Text style={styles.modalActionText}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        </Section>
+
+        {/* Select Time */}
+        <Section title="Select time">
+          <View style={styles.timeCard}>
+            <TimeBlock label="From" value="12.00" />
+            <Text style={styles.arrow}>›</Text>
+            <TimeBlock label="To" value="14.00" />
+          </View>
+        </Section>
+
+        {/* Priority */}
+        <Section title="Priority">
+          <View style={styles.priorityRow}>
+            <PriorityChip
+              label="Low"
+              color="#4CAF50"
+              active={priority === 'low'}
+              onPress={() => setPriority('low')}
+            />
+            <PriorityChip
+              label="Medium"
+              color="#FFA000"
+              active={priority === 'medium'}
+              onPress={() => setPriority('medium')}
+            />
+            <PriorityChip
+              label="High"
+              color="#F44336"
+              active={priority === 'high'}
+              onPress={() => setPriority('high')}
+            />
+          </View>
+        </Section>
+
+        {/* People */}
+        <Section title="People">
+          <TouchableOpacity style={styles.addPeopleBtn}>
+            <Text style={styles.addPeopleText}>＋</Text>
+          </TouchableOpacity>
+        </Section>
+
+        {/* Description */}
+        <Section title="Description">
+          <TextInput
+            style={styles.textArea}
+            placeholder="Add a short description"
+            multiline
+          />
+        </Section>
+      </ScrollView>
+
+      {/* Bottom Actions */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity style={styles.cancelBtn}>
+          <Text style={styles.cancelText}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.saveBtn}>
+          <Text style={styles.saveText}>Save</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFF',
+  container: { flex: 1, backgroundColor: '#FFF' },
+  content: { padding: 20, paddingBottom: 140 },
+
+  section: { marginBottom: 24 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#1A1A1A',
   },
-  content: {
-    flex: 1,
+
+  dateRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 360,
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  dateCard: {
+    width: 80,
+    height: 110,
+    borderRadius: 20,
+    backgroundColor: '#F3F6F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 0,
+  },
+  dateCardActive: { backgroundColor: '#1677FF' },
+  dateNumber: { fontSize: 24, fontWeight: '700', color: '#333' },
+  dateLabel: { fontSize: 18, color: '#777' },
+  dateTextActive: { color: '#FFF' },
+
+  timeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F3F6F9',
+    borderRadius: 16,
+    padding: 20,
+  },
+  timeLabel: { fontSize: 13, color: '#999' },
+  timeValue: { fontSize: 28, fontWeight: '700', color: '#1A1A1A' },
+  arrow: { fontSize: 28, color: '#000' },
+
+  priorityRow: { flexDirection: 'row', gap: 12 },
+  priorityChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+  },
+  dot: { width: 12, height: 12, borderRadius: 6 },
+  priorityText: { fontSize: 14, fontWeight: '500' },
+
+  addPeopleBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: '#4F6BFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 8,
+  addPeopleText: { fontSize: 22, color: '#4F6BFF' },
+
+  textArea: {
+    height: 100,
+    backgroundColor: '#F3F6F9',
+    borderRadius: 16,
+    padding: 16,
+    textAlignVertical: 'top',
   },
-  subtitle: {
+
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+    backgroundColor: '#FFF',
+  },
+  cancelBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: '#1677FF',
+    borderRadius: 14,
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  cancelText: { color: '#1677FF', fontWeight: '600' },
+  saveBtn: {
+    flex: 1,
+    backgroundColor: '#0A0A1A',
+    borderRadius: 14,
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  saveText: { color: '#FFF', fontWeight: '600' },
+  // ...existing styles...
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    width: '90%',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 16,
+  },
+  modalCancelBtn: {
+    marginRight: 16,
+  },
+  modalActionText: {
+    color: '#1677FF',
+    fontWeight: '600',
     fontSize: 16,
-    color: '#999',
   },
 });
