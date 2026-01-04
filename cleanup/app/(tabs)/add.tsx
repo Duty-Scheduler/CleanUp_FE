@@ -3,11 +3,18 @@
 import DateRow from '@/components/ui/DateRow';
 import MonthCalendar from '@/components/ui/MonthCalendar';
 import PageHeader from '@/components/ui/PageHeader';
+import TimePicker from '@/components/ui/TimePicker';
 import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AddScreen() {
+  // TimePicker state
+  const [showTimePicker, setShowTimePicker] = useState<'start' | 'end' | null>(null);
+  const [startHour, setStartHour] = useState(12);
+  const [startMinute, setStartMinute] = useState(0);
+  const [endHour, setEndHour] = useState(14);
+  const [endMinute, setEndMinute] = useState(0);
   const today = new Date();
   const [selectedStartDate, setSelectedStartDate] = useState(0);
   const [showStartCalendar, setShowStartCalendar] = useState(false);
@@ -226,10 +233,39 @@ export default function AddScreen() {
         {/* Select Time */}
         <Section title="Select time">
           <View style={styles.timeCard}>
-            <TimeBlock label="From" value="12.00" />
+            <TouchableOpacity onPress={() => setShowTimePicker('start')}>
+              <TimeBlock label="From" value={`${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`} />
+            </TouchableOpacity>
             <Text style={styles.arrow}>›</Text>
-            <TimeBlock label="To" value="14.00" />
+            <TouchableOpacity onPress={() => setShowTimePicker('end')}>
+              <TimeBlock label="To" value={`${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`} />
+            </TouchableOpacity>
           </View>
+          {/* TimePicker Modals */}
+          <TimePicker
+            visible={showTimePicker === 'start'}
+            label="Select start time"
+            initialHour={startHour}
+            initialMinute={startMinute}
+            onClose={() => setShowTimePicker(null)}
+            onConfirm={(h, m) => {
+              setStartHour(h);
+              setStartMinute(m);
+              setShowTimePicker(null);
+            }}
+          />
+          <TimePicker
+            visible={showTimePicker === 'end'}
+            label="Select end time"
+            initialHour={endHour}
+            initialMinute={endMinute}
+            onClose={() => setShowTimePicker(null)}
+            onConfirm={(h, m) => {
+              setEndHour(h);
+              setEndMinute(m);
+              setShowTimePicker(null);
+            }}
+          />
         </Section>
 
         {/* Priority */}
