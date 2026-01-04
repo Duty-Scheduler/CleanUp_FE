@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
         height: 160,
         width: 60,
         borderRadius: 8,
-        backgroundColor: '#F3F6F9',
+        backgroundColor: '#FFFFFF',
     },
     pickerContent: {
         alignItems: 'center',

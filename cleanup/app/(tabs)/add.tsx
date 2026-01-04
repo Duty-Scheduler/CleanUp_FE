@@ -1,6 +1,8 @@
 
 
 import DateRow from '@/components/ui/DateRow';
+import GroupPicker, { Group } from '@/components/ui/GroupPicker';
+import { Member } from '@/components/ui/MemberPicker';
 import MonthCalendar from '@/components/ui/MonthCalendar';
 import PageHeader from '@/components/ui/PageHeader';
 import TimePicker from '@/components/ui/TimePicker';
@@ -9,6 +11,38 @@ import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AddScreen() {
+  // GroupPicker state
+  const [showGroupPicker, setShowGroupPicker] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const [selectedMembers, setSelectedMembers] = useState<Member[]>([]);
+  // Dummy data
+  const groups: Group[] = [
+    {
+      id: 'g1',
+      name: 'Nhóm A',
+      members: [
+        { id: 'u1', name: 'Nguyễn Văn A' },
+        { id: 'u2', name: 'Trần Thị B' },
+        { id: 'u3', name: 'Lê Văn C' },
+      ],
+    },
+    {
+      id: 'g2',
+      name: 'Nhóm B',
+      members: [
+        { id: 'u4', name: 'Phạm Văn D' },
+        { id: 'u5', name: 'Hoàng Thị E' },
+      ],
+    },
+    {
+      id: 'g3',
+      name: 'Nhóm C',
+      members: [
+        { id: 'u6', name: 'Ngô Văn F' },
+        { id: 'u7', name: 'Đỗ Thị G' },
+      ],
+    },
+  ];
   // TimePicker state
   const [showTimePicker, setShowTimePicker] = useState<'start' | 'end' | null>(null);
   const [startHour, setStartHour] = useState(12);
@@ -294,9 +328,36 @@ export default function AddScreen() {
 
         {/* People */}
         <Section title="People">
-          <TouchableOpacity style={styles.addPeopleBtn}>
-            <Text style={styles.addPeopleText}>＋</Text>
+          <TouchableOpacity style={styles.addPeopleBtn} onPress={() => setShowGroupPicker(true)}>
+            <Text style={styles.addPeopleText}>+</Text>
           </TouchableOpacity>
+          {/* Hiển thị nhóm và thành viên đã chọn */}
+          {selectedGroup && (
+            <View style={{ marginTop: 12 }}>
+              <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>Group: {selectedGroup.name}</Text>
+              {selectedMembers.length > 0 ? (
+                <View>
+                  <Text style={{ fontWeight: 'bold' }}>Member:</Text>
+                  {selectedMembers.map(m => (
+                    <Text key={m.id} style={{ marginLeft: 8 }}>{m.name}</Text>
+                  ))}
+                </View>
+              ) : (
+                <Text style={{ marginLeft: 8, color: '#888' }}>No members selected</Text>
+              )}
+            </View>
+          )}
+          {/* GroupPicker modal */}
+          <GroupPicker
+            visible={showGroupPicker}
+            groups={groups}
+            onClose={() => setShowGroupPicker(false)}
+            onConfirm={(group, members) => {
+              setSelectedGroup(group);
+              setSelectedMembers(members);
+              setShowGroupPicker(false);
+            }}
+          />
         </Section>
 
         {/* Description */}
