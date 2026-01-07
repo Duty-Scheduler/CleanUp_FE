@@ -16,13 +16,16 @@ import TabSwitch from '@/components/ui/TabSwitch';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
-import { useAppSelector } from '@/store/hooks';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { login, register } from '@/store/slices/authSlice';
 import { isGoogleConfigured } from '@/config/google';
 
 export default function AuthScreen() {
+  const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState(0);
   const [rememberMe, setRememberMe] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [signupError, setSignupError] = useState('');
 
   // Login state
   const [loginEmail, setLoginEmail] = useState('');
@@ -31,14 +34,21 @@ export default function AuthScreen() {
   // Signup state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [birthDate, setBirthDate] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // Google Auth
-  const { signInWithGoogle, renderGoogleButton, isLoading: googleLoading, error: googleError, isAuthenticated, isReady } = useGoogleAuth();
-  const authState = useAppSelector((state) => state.auth);
+  const { 
+    signInWithGoogle, 
+    renderGoogleButton, 
+    isLoading: googleLoading, 
+    error: googleError, 
+    isAuthenticated, 
+    isReady: googleReady 
+  } = useGoogleAuth();
+  
+  const { isLoading: authLoading, error: authError } = useAppSelector((state) => state.auth);
 
   // Navigate to home when authenticated
   useEffect(() => {
@@ -47,13 +57,13 @@ export default function AuthScreen() {
     }
   }, [isAuthenticated]);
 
-  // Render Google button when ready
+  // Render Google button on web when ready
   useEffect(() => {
-    if (Platform.OS === 'web' && isReady) {
+    if (Platform.OS === 'web' && googleReady) {
       renderGoogleButton('google-signin-button');
       renderGoogleButton('google-signup-button');
     }
-  }, [isReady, activeTab, renderGoogleButton]);
+  }, [googleReady, activeTab, renderGoogleButton]);
 
   // Show error if Google login fails
   useEffect(() => {
@@ -62,26 +72,69 @@ export default function AuthScreen() {
     }
   }, [googleError]);
 
-  const handleLogin = () => {
+  // Show auth error
+  useEffect(() => {
+    if (authError) {
+      if (activeTab === 0) {
+        setLoginError(authError);
+      } else {
+        setSignupError(authError);
+      }
+    }
+  }, [authError, activeTab]);
+
+  const handleLogin = async () => {
     setLoginError('');
     
-    if (loginEmail === 'test' && loginPassword === 'test') {
-      router.replace('/(tabs)');
-    } else {
-      setLoginError('Invalid username or password');
-      Alert.alert('Login Failed', 'Please use username: test and password: test');
+    if (!loginEmail || !loginPassword) {
+      setLoginError('Please enter email and password');
+      return;
+    }
+
+    try {
+      await dispatch(login({ email: loginEmail, password: loginPassword })).unwrap();
+      // Navigation will happen automatically via isAuthenticated effect
+    } catch (err: any) {
+      setLoginError(err || 'Login failed');
     }
   };
 
-  const handleSignup = () => {
-    router.replace('/(tabs)');
+  const handleSignup = async () => {
+    setSignupError('');
+    
+    if (!firstName || !lastName || !signupEmail || !signupPassword) {
+      setSignupError('Please fill in all required fields');
+      return;
+    }
+
+    if (signupPassword !== confirmPassword) {
+      setSignupError('Passwords do not match');
+      return;
+    }
+
+    if (signupPassword.length < 8) {
+      setSignupError('Password must be at least 8 characters');
+      return;
+    }
+
+    try {
+      await dispatch(register({
+        email: signupEmail,
+        password: signupPassword,
+        name: firstName,
+        lastname: lastName,
+      })).unwrap();
+      // Navigation will happen automatically via isAuthenticated effect
+    } catch (err: any) {
+      setSignupError(err || 'Registration failed');
+    }
   };
 
   const handleGoogleLogin = async () => {
     if (!isGoogleConfigured()) {
       Alert.alert(
-        'Chưa cấu hình Google',
-        'Vui lòng cập nhật Google Client ID trong file config/google.ts',
+        'Google not configured',
+        'Please update Google Client ID in config/google.ts',
         [{ text: 'OK' }]
       );
       return;
@@ -91,6 +144,39 @@ export default function AuthScreen() {
 
   const handleForgotPassword = () => {
     // Navigate to forgot password
+  };
+
+  // Render Google button based on platform
+  const renderGoogleSignInButton = (buttonId: string) => {
+    if (Platform.OS === 'web') {
+      // Web: render Google Identity Services button
+      return (
+        <View style={styles.googleButtonContainer}>
+          <div id={buttonId} style={{ display: 'flex', justifyContent: 'center' }} />
+          {!googleReady && (
+            <Button
+              title="Continue with Google"
+              onPress={handleGoogleLogin}
+              variant="google"
+              icon={<GoogleIcon />}
+              loading={true}
+            />
+          )}
+        </View>
+      );
+    } else {
+      // Mobile: render custom button that triggers expo-auth-session
+      return (
+        <Button
+          title="Continue with Google"
+          onPress={handleGoogleLogin}
+          variant="google"
+          icon={<GoogleIcon />}
+          loading={googleLoading}
+          disabled={googleLoading || !googleReady}
+        />
+      );
+    }
   };
 
   return (
@@ -116,17 +202,17 @@ export default function AuthScreen() {
             // Login Form
             <>
               <Input
-                label="Username"
-                placeholder="test"
+                label="Email"
+                placeholder="your@email.com"
                 value={loginEmail}
                 onChangeText={setLoginEmail}
                 autoCapitalize="none"
-                error={loginError ? ' ' : undefined}
+                keyboardType="email-address"
               />
 
               <Input
                 label="Password"
-                placeholder="test"
+                placeholder="Enter your password"
                 value={loginPassword}
                 onChangeText={setLoginPassword}
                 isPassword
@@ -149,7 +235,13 @@ export default function AuthScreen() {
                 </TouchableOpacity>
               </View>
 
-              <Button title="Log In" onPress={handleLogin} style={styles.submitButton} />
+              <Button 
+                title="Log In" 
+                onPress={handleLogin} 
+                style={styles.submitButton}
+                loading={authLoading}
+                disabled={authLoading}
+              />
 
               <View style={styles.dividerContainer}>
                 <View style={styles.divider} />
@@ -157,21 +249,7 @@ export default function AuthScreen() {
                 <View style={styles.divider} />
               </View>
 
-              {/* Google Sign-In Button Container for Web */}
-              {Platform.OS === 'web' ? (
-                <View style={styles.googleButtonContainer}>
-                  <div id="google-signin-button" style={{ display: 'flex', justifyContent: 'center' }} />
-                </View>
-              ) : (
-                <Button
-                  title="Continue with Google"
-                  onPress={handleGoogleLogin}
-                  variant="google"
-                  icon={<GoogleIcon />}
-                  loading={googleLoading}
-                  disabled={googleLoading}
-                />
-              )}
+              {renderGoogleSignInButton('google-signin-button')}
             </>
           ) : (
             // Signup Form
@@ -180,7 +258,7 @@ export default function AuthScreen() {
                 <View style={styles.nameInput}>
                   <Input
                     label="First Name"
-                    placeholder="Lois"
+                    placeholder="John"
                     value={firstName}
                     onChangeText={setFirstName}
                   />
@@ -188,7 +266,7 @@ export default function AuthScreen() {
                 <View style={styles.nameInput}>
                   <Input
                     label="Last Name"
-                    placeholder="Becket"
+                    placeholder="Doe"
                     value={lastName}
                     onChangeText={setLastName}
                   />
@@ -196,15 +274,8 @@ export default function AuthScreen() {
               </View>
 
               <Input
-                label="Birth of date"
-                placeholder="18/03/2024"
-                value={birthDate}
-                onChangeText={setBirthDate}
-              />
-
-              <Input
                 label="Email"
-                placeholder="Loisbecket@gmail.com"
+                placeholder="your@email.com"
                 value={signupEmail}
                 onChangeText={setSignupEmail}
                 keyboardType="email-address"
@@ -213,7 +284,7 @@ export default function AuthScreen() {
 
               <Input
                 label="Password"
-                placeholder="*******"
+                placeholder="Min 8 characters"
                 value={signupPassword}
                 onChangeText={setSignupPassword}
                 isPassword
@@ -221,13 +292,20 @@ export default function AuthScreen() {
 
               <Input
                 label="Confirm Password"
-                placeholder="*******"
+                placeholder="Confirm your password"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 isPassword
+                error={signupError}
               />
 
-              <Button title="Sign Up" onPress={handleSignup} style={styles.submitButton} />
+              <Button 
+                title="Sign Up" 
+                onPress={handleSignup} 
+                style={styles.submitButton}
+                loading={authLoading}
+                disabled={authLoading}
+              />
 
               <View style={styles.dividerContainer}>
                 <View style={styles.divider} />
@@ -235,21 +313,7 @@ export default function AuthScreen() {
                 <View style={styles.divider} />
               </View>
 
-              {/* Google Sign-Up Button Container for Web */}
-              {Platform.OS === 'web' ? (
-                <View style={styles.googleButtonContainer}>
-                  <div id="google-signup-button" style={{ display: 'flex', justifyContent: 'center' }} />
-                </View>
-              ) : (
-                <Button
-                  title="Continue with Google"
-                  onPress={handleGoogleLogin}
-                  variant="google"
-                  icon={<GoogleIcon />}
-                  loading={googleLoading}
-                  disabled={googleLoading}
-                />
-              )}
+              {renderGoogleSignInButton('google-signup-button')}
             </>
           )}
         </View>
@@ -341,6 +405,7 @@ const styles = StyleSheet.create({
   googleButtonContainer: {
     alignItems: 'center',
     marginBottom: 16,
+    minHeight: 44,
   },
   googleIcon: {
     width: 24,

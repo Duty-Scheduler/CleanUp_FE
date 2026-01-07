@@ -17,6 +17,20 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="auth" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen 
+            name="create-team" 
+            options={{ 
+              headerShown: false,
+              presentation: 'modal',
+            }} 
+          />
+          <Stack.Screen 
+            name="join-team" 
+            options={{ 
+              headerShown: false,
+              presentation: 'modal',
+            }} 
+          />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

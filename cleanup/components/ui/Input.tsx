@@ -41,7 +41,7 @@ export default function Input({ label, isPassword, error, style, ...props }: Inp
           </TouchableOpacity>
         )}
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 }
