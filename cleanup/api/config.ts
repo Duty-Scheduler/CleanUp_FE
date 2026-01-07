@@ -33,17 +33,17 @@ export const ENDPOINTS = {
   },
   // Teams (legacy)
   TEAMS: {
-    LIST: '/teams',
-    CREATE: '/teams',
-    BY_ID: (id: string) => `/teams/${id}`,
-    JOIN: '/teams/join',
-    LEAVE: (id: string) => `/teams/${id}/leave`,
-    MEMBERS: (id: string) => `/teams/${id}/members`,
+    LIST: '/group/joined',
+    CREATE: '/group',
+    BY_ID: (id: string) => `/group/${id}`,
+    JOIN: '/group/join',
+    LEAVE: (id: string) => `/group/${id}/leave`,
+    MEMBERS: (id: string) => `user/group/${id}`,
   },
   // Tasks
   TASKS: {
     LIST: '/tasks',
-    CREATE: '/tasks',
+    CREATE: (groupId: string) => `/task/group/${groupId}`,
     BY_ID: (id: string) => `/tasks/${id}`,
     BY_TEAM: (teamId: string) => `/teams/${teamId}/tasks`,
     ASSIGN: (id: string) => `/tasks/${id}/assign`,

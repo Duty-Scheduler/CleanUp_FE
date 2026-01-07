@@ -1,6 +1,6 @@
 import { apiClient } from '../client';
 import { ENDPOINTS } from '../config';
-import { Team, TeamMember, CreateTeamRequest, JoinTeamRequest, PaginatedResponse } from '../types';
+import { CreateTeamRequest, JoinTeamRequest, Team, TeamMember } from '../types';
 
 export const teamService = {
   /**

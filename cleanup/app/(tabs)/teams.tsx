@@ -1,18 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import PageHeader from '@/components/ui/PageHeader';
 import ActionButtons from '@/components/ui/ActionButtons';
+import PageHeader from '@/components/ui/PageHeader';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchJoinedGroups } from '@/store/slices/groupSlice';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { router } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TeamsScreen() {
   const [activeSegment, setActiveSegment] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  
+
+  // Reset state mỗi lần quay lại page
+  useFocusEffect(
+    useCallback(() => {
+      setActiveSegment(0);
+      setRefreshing(false);
+    }, [])
+  );
+
   const dispatch = useAppDispatch();
   const { groups, isLoading } = useAppSelector((state) => state.groups);
   const { isAuthenticated } = useAppSelector((state) => state.auth);
@@ -79,7 +88,7 @@ export default function TeamsScreen() {
                     <Ionicons name="trophy" size={18} color="#F5A623" style={styles.crownIcon} />
                   )}
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.settingsBtn}
                   onPress={() => router.push(`/group-detail?groupId=${group.id}`)}
                 >
@@ -113,11 +122,11 @@ export default function TeamsScreen() {
               {activeSegment === 0 ? 'No teams created' : 'Not a member of any team'}
             </Text>
             <Text style={styles.emptySubtitle}>
-              {activeSegment === 0 
-                ? 'Create a team to get started' 
+              {activeSegment === 0
+                ? 'Create a team to get started'
                 : 'Join a team to collaborate'}
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.emptyButton}
               onPress={activeSegment === 0 ? handleCreateTeam : handleJoinTeam}
             >

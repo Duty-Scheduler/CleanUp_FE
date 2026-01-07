@@ -1,6 +1,6 @@
 import { apiClient } from '../client';
 import { ENDPOINTS } from '../config';
-import { Group, GroupWithAdmin, CreateGroupRequest, JoinGroupRequest, InviteTokenResponse } from '../types';
+import { CreateGroupRequest, Group, GroupWithAdmin, InviteTokenResponse, JoinGroupRequest } from '../types';
 
 export const groupService = {
   /**

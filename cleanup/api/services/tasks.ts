@@ -1,6 +1,6 @@
 import { apiClient } from '../client';
 import { ENDPOINTS } from '../config';
-import { Task, CreateTaskRequest, UpdateTaskRequest, PaginatedResponse } from '../types';
+import { CreateTaskRequest, Task, UpdateTaskRequest } from '../types';
 
 export interface TaskFilters {
   teamId?: string;
@@ -19,7 +19,7 @@ export const taskService = {
     if (filters?.status) params.append('status', filters.status);
     if (filters?.date) params.append('date', filters.date);
     if (filters?.assigneeId) params.append('assigneeId', filters.assigneeId);
-    
+
     const query = params.toString();
     return apiClient.get<Task[]>(`${ENDPOINTS.TASKS.LIST}${query ? `?${query}` : ''}`);
   },
@@ -39,14 +39,14 @@ export const taskService = {
   /**
    * Create a new task
    */
-  create: (data: CreateTaskRequest) =>
-    apiClient.post<Task>(ENDPOINTS.TASKS.CREATE, data),
+  create: (groupId: string, data: CreateTaskRequest) =>
+    apiClient.post<Task>(ENDPOINTS.TASKS.CREATE(groupId), data),
 
   /**
    * Update task
    */
   update: (id: string, data: UpdateTaskRequest) =>
-    apiClient.patch<Task>(ENDPOINTS.TASKS.BY_ID(id), data),
+    console.log(apiClient.patch<Task>(ENDPOINTS.TASKS.BY_ID(id), data)),
 
   /**
    * Delete task
