@@ -43,7 +43,7 @@ export const ENDPOINTS = {
   // Tasks
   TASKS: {
     LIST: '/tasks',
-    CREATE: '/tasks',
+    CREATE: (groupId: string) => `/task/group/${groupId}`,
     BY_ID: (id: string) => `/tasks/${id}`,
     BY_TEAM: (teamId: string) => `/teams/${teamId}/tasks`,
     ASSIGN: (id: string) => `/tasks/${id}/assign`,

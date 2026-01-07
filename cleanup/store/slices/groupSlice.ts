@@ -1,5 +1,5 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { groupService, Group, CreateGroupRequest, JoinGroupRequest } from '@/api';
+import { CreateGroupRequest, Group, groupService, JoinGroupRequest } from '@/api';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 
 interface GroupState {
   groups: Group[];
@@ -38,9 +38,9 @@ export const createGroup = createAsyncThunk(
       const response = await groupService.create(data);
       // After creating, also create invite token
       const inviteResponse = await groupService.createInvite(response.group.id);
-      return { 
+      return {
         group: { ...response.group, UserGroupTask: { isAdmin: response.isAdmin } },
-        inviteToken: inviteResponse.inviteToken 
+        inviteToken: inviteResponse.inviteToken
       };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to create group');

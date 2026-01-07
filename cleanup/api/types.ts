@@ -143,11 +143,8 @@ export interface Task {
 export interface CreateTaskRequest {
   title: string;
   description?: string;
-  teamId: string;
-  assigneeIds?: string[];
-  dueDate?: string;
-  scheduledDate?: string;
-  scheduledTime?: string;
+  penalty_description: string;
+  assignId?: string[];
 }
 
 export interface UpdateTaskRequest {

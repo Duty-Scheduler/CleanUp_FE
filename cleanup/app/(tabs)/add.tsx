@@ -1,15 +1,16 @@
 
 
+import { groupService, userService } from '@/api';
 import { taskService } from '@/api/services/tasks';
-import { teamService } from '@/api/services/teams';
 import DateRow from '@/components/ui/DateRow';
 import GroupPicker, { Group } from '@/components/ui/GroupPicker';
 import { Member } from '@/components/ui/MemberPicker';
 import MonthCalendar from '@/components/ui/MonthCalendar';
 import PageHeader from '@/components/ui/PageHeader';
 import TimePicker from '@/components/ui/TimePicker';
+import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -26,38 +27,47 @@ export default function AddScreen() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
 
-  React.useEffect(() => {
-    const fetchGroups = async () => {
-      setGroupsLoading(true);
-      try {
-        const teams = await teamService.getAll();
-        // Lấy member cho từng team
-        const groupList: Group[] = await Promise.all(
-          teams.map(async (team: any) => {
-            let members: Member[] = [];
-            try {
-              const teamMembers = await teamService.getMembers(team.id);
-              members = teamMembers.map((tm: any) => ({
-                id: tm.user?.id || tm.id,
-                name: tm.user?.name || 'No name',
-              }));
-            } catch { }
-            return {
-              id: team.id,
-              name: team.name,
-              members,
-            };
-          })
-        );
-        setGroups(groupList);
-      } catch (e) {
-        Alert.alert('Error', 'Failed to load groups');
-      } finally {
-        setGroupsLoading(false);
-      }
-    };
-    fetchGroups();
+  const fetchGroups = useCallback(async () => {
+    setGroupsLoading(true);
+    try {
+      const teams = await groupService.getJoined();
+      console.log('Fetched teams:', teams);
+      // Lọc trùng id nếu có
+      const uniqueTeams = teams.groups.filter((g: any, i: number, arr: any[]) => arr.findIndex(x => x.id === g.id) === i);
+      // Lấy member cho từng team
+      const groupList: Group[] = await Promise.all(
+        uniqueTeams.map(async (team: any) => {
+          let members: Member[] = [];
+          try {
+            const teamMembers = await userService.getByGroup(team.id);
+            members = teamMembers.users?.map((tm: any) => ({
+              id: tm.id,
+              name: tm.name ? `${tm.name} ${tm.lastname || ''}`.trim() : 'No name',
+            }));
+          } catch (err) {
+            console.error(`Failed to fetch members for team ${team.id}:`, err);
+          }
+          return {
+            id: team.id,
+            name: team.title || team.name,
+            members,
+          };
+        })
+      );
+      setGroups(groupList);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to load groups');
+      console.error('Error fetching groups:', e);
+    } finally {
+      setGroupsLoading(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchGroups();
+    }, [fetchGroups])
+  );
   // TimePicker state
   const [showTimePicker, setShowTimePicker] = useState<'start' | 'end' | null>(null);
   const [startHour, setStartHour] = useState(12);
@@ -370,6 +380,7 @@ export default function AddScreen() {
           )}
           {/* GroupPicker modal */}
           <GroupPicker
+            key={`group-picker-${showGroupPicker}`}
             visible={showGroupPicker}
             groups={groups}
             onClose={() => setShowGroupPicker(false)}
@@ -468,20 +479,36 @@ export default function AddScreen() {
             }
             setLoading(true);
             try {
-              // Build request
-              const scheduledDate = (otherStartDate || startDateValue).toISOString().slice(0, 10);
-              const scheduledTime = `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
+              // Build request theo interface CreateTaskRequest
               const req = {
                 title: title.trim(),
-                description: description.trim(),
-                teamId: selectedGroup.id,
-                assigneeIds: selectedMembers.map(m => m.id),
-                scheduledDate,
-                scheduledTime,
+                description: description.trim() || 'No description',
+                penalty_description: 'penalty_description',
+                assignId: selectedMembers.map(m => m.id),
               };
-              await taskService.create(req);
+              await taskService.create(selectedGroup.id, req);
               Alert.alert('Success', 'Task created successfully!');
-              // Optionally: reset form or navigate
+              // Reset all form states
+              setTitle('');
+              setDescription('');
+              setSelectedGroup(null);
+              setSelectedMembers([]);
+              setShowGroupPicker(false);
+              setStartHour(12);
+              setStartMinute(0);
+              setEndHour(14);
+              setEndMinute(0);
+              setSelectedStartDate(0);
+              setShowStartCalendar(false);
+              setOtherStartDate(null);
+              setTempStartDate(today);
+              setSelectedEndDate(0);
+              setShowEndCalendar(false);
+              setOtherEndDate(null);
+              setTempEndDate(today);
+              setShowMonthPickerStart(false);
+              setShowMonthPickerEnd(false);
+              setPriority('low');
             } catch (e) {
               Alert.alert('Error', 'Failed to create task.');
             } finally {
