@@ -1,21 +1,43 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import PageHeader from '@/components/ui/PageHeader';
-import ActivityItem from '@/components/ui/ActivityItem';
 import SettingItem from '@/components/ui/SettingItem';
-import { currentUser as mockUser, myTeams, recentActivities } from '@/data/mockData';
+import { currentUser as mockUser } from '@/data/mockData';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
+import { userService, UserStats } from '@/api/services/users';
 
 export default function ProfileScreen() {
   const dispatch = useAppDispatch();
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { groups } = useAppSelector((state) => state.groups);
   
   const [notifications, setNotifications] = useState(true);
   const [pushAlerts, setPushAlerts] = useState(false);
   const [soundEffects, setSoundEffects] = useState(true);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  // Fetch user stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!isAuthenticated) return;
+      
+      try {
+        setLoadingStats(true);
+        const response = await userService.getStats();
+        setStats(response);
+      } catch (error) {
+        console.log('Failed to fetch stats:', error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, [isAuthenticated]);
 
   // Use Redux user if authenticated, otherwise use mock user
   const displayUser = isAuthenticated && user ? {
@@ -41,6 +63,11 @@ export default function ProfileScreen() {
     );
   };
 
+  // Calculate completion rate
+  const completionRate = stats && stats.totalTasks > 0 
+    ? Math.round((stats.completedTasks / stats.totalTasks) * 100) 
+    : 0;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -48,7 +75,7 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <PageHeader title="My Tasks" subtitle="Manage your day here" />
+        <PageHeader title="Profile" subtitle="Manage your account" />
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
@@ -71,7 +98,7 @@ export default function ProfileScreen() {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Ionicons name="people-outline" size={20} color="#2196F3" />
-              <Text style={styles.statValue}>{myTeams.length} Teams</Text>
+              <Text style={styles.statValue}>{groups.length} Groups</Text>
             </View>
             <TouchableOpacity style={styles.editButton}>
               <Ionicons name="create-outline" size={18} color="#2196F3" />
@@ -80,35 +107,56 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Team Avatars */}
-        <View style={styles.teamAvatars}>
-          {myTeams.slice(0, 4).map((team, index) => (
-            <View key={team.id} style={[styles.teamAvatar, { marginLeft: index > 0 ? -10 : 0 }]}>
-              <Text style={styles.teamAvatarText}>{team.name.charAt(0)}</Text>
-            </View>
-          ))}
-          {myTeams.length > 4 && (
-            <View style={[styles.teamAvatar, styles.moreAvatar, { marginLeft: -10 }]}>
-              <Text style={styles.moreText}>+{myTeams.length - 4}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Recent Activity */}
+        {/* User Statistics */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <Text style={styles.sectionSubtitle}>Your recent actions</Text>
+            <Text style={styles.sectionTitle}>Statistics</Text>
+            <Text style={styles.sectionSubtitle}>Your activity overview</Text>
           </View>
-          {recentActivities.map((activity) => (
-            <ActivityItem
-              key={activity.id}
-              type={activity.type}
-              title={activity.title}
-              subtitle={activity.subtitle}
-              time={activity.time}
-            />
-          ))}
+          
+          {loadingStats ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#2196F3" />
+            </View>
+          ) : (
+            <View style={styles.statsGrid}>
+              {/* Total Tasks */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconContainer, { backgroundColor: '#E3F2FD' }]}>
+                  <Ionicons name="list-outline" size={24} color="#2196F3" />
+                </View>
+                <Text style={styles.statNumber}>{stats?.totalTasks || 0}</Text>
+                <Text style={styles.statLabel}>Total Tasks</Text>
+              </View>
+
+              {/* Completed Tasks */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconContainer, { backgroundColor: '#E8F5E9' }]}>
+                  <Ionicons name="checkmark-circle-outline" size={24} color="#4CAF50" />
+                </View>
+                <Text style={styles.statNumber}>{stats?.completedTasks || 0}</Text>
+                <Text style={styles.statLabel}>Completed</Text>
+              </View>
+
+              {/* Completion Rate */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconContainer, { backgroundColor: '#FFF3E0' }]}>
+                  <Ionicons name="trending-up-outline" size={24} color="#FF9800" />
+                </View>
+                <Text style={styles.statNumber}>{completionRate}%</Text>
+                <Text style={styles.statLabel}>Completion</Text>
+              </View>
+
+              {/* Penalty Count */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconContainer, { backgroundColor: '#FFEBEE' }]}>
+                  <Ionicons name="warning-outline" size={24} color="#F44336" />
+                </View>
+                <Text style={styles.statNumber}>{stats?.penaltyCount || 0}</Text>
+                <Text style={styles.statLabel}>Penalties</Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Settings */}
@@ -169,7 +217,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 24,
   },
   profileInfo: {
     flexDirection: 'row',
@@ -236,40 +284,13 @@ const styles = StyleSheet.create({
     color: '#2196F3',
     fontWeight: '500',
   },
-  teamAvatars: {
-    flexDirection: 'row',
-    marginBottom: 24,
-  },
-  teamAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#E3F2FD',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFF',
-  },
-  teamAvatarText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2196F3',
-  },
-  moreAvatar: {
-    backgroundColor: '#F5F5F5',
-  },
-  moreText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-  },
   section: {
     marginBottom: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
     gap: 8,
   },
   settingsIcon: {
@@ -284,5 +305,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#999',
     marginLeft: 'auto',
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statCard: {
+    width: '47%',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  statIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 13,
+    color: '#666',
   },
 });

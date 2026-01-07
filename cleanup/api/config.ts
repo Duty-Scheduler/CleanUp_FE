@@ -20,6 +20,7 @@ export const ENDPOINTS = {
     UPDATE: '/users/me',
     BY_ID: (id: string) => `/users/${id}`,
     BY_GROUP: (groupId: string) => `/user/group/${groupId}`,
+    STATS: '/user/me/stats',
   },
   // Groups
   GROUPS: {

@@ -8,6 +8,13 @@ export interface UpdateUserRequest {
   avatar?: string;
 }
 
+export interface UserStats {
+  userId: string;
+  totalTasks: number;
+  completedTasks: number;
+  penaltyCount: number;
+}
+
 export const userService = {
   /**
    * Get current user profile
@@ -32,4 +39,10 @@ export const userService = {
    */
   getByGroup: (groupId: string) =>
     apiClient.get<GroupMembersResponse>(ENDPOINTS.USERS.BY_GROUP(groupId)),
+
+  /**
+   * Get current user statistics
+   */
+  getStats: () =>
+    apiClient.get<UserStats>(ENDPOINTS.USERS.STATS),
 };
