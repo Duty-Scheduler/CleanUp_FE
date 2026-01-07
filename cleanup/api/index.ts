@@ -10,6 +10,7 @@ export * from './types';
 // Services
 export { authService } from './services/auth';
 export { userService } from './services/users';
+export { groupService } from './services/groups';
 export { teamService } from './services/teams';
 export { taskService } from './services/tasks';
 export { scheduleService } from './services/schedules';

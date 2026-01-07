@@ -1,6 +1,6 @@
 import { apiClient } from '../client';
 import { ENDPOINTS } from '../config';
-import { User } from '../types';
+import { User, GroupMembersResponse } from '../types';
 
 export interface UpdateUserRequest {
   name?: string;
@@ -26,4 +26,10 @@ export const userService = {
    */
   getById: (id: string) =>
     apiClient.get<User>(ENDPOINTS.USERS.BY_ID(id)),
+
+  /**
+   * Get all users in a group
+   */
+  getByGroup: (groupId: string) =>
+    apiClient.get<GroupMembersResponse>(ENDPOINTS.USERS.BY_GROUP(groupId)),
 };

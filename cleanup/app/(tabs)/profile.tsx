@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import PageHeader from '@/components/ui/PageHeader';
 import ActivityItem from '@/components/ui/ActivityItem';
@@ -34,9 +33,8 @@ export default function ProfileScreen() {
         {
           text: 'Log out',
           style: 'destructive',
-          onPress: async () => {
-            await dispatch(logout());
-            router.replace('/auth');
+          onPress: () => {
+            dispatch(logout());
           },
         },
       ]

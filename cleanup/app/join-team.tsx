@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -15,53 +14,56 @@ import { Ionicons } from '@expo/vector-icons';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { joinTeam } from '@/store/slices/teamSlice';
+import { useToast } from '@/contexts/ToastContext';
+import { joinGroup, fetchJoinedGroups } from '@/store/slices/groupSlice';
 
 export default function JoinTeamScreen() {
   const dispatch = useAppDispatch();
-  const { isLoading } = useAppSelector((state) => state.teams);
+  const { showToast } = useToast();
+  const { isLoading } = useAppSelector((state) => state.groups);
   
-  const [code, setCode] = useState('');
-  const [codeError, setCodeError] = useState('');
+  const [groupId, setGroupId] = useState('');
+  const [inviteToken, setInviteToken] = useState('');
+  const [error, setError] = useState('');
 
   const handleJoin = async () => {
-    setCodeError('');
+    setError('');
     
-    const trimmedCode = code.trim().toUpperCase();
-    
-    if (!trimmedCode) {
-      setCodeError('Team code is required');
+    if (!groupId.trim()) {
+      setError('Group ID is required');
       return;
     }
 
-    if (trimmedCode.length < 4) {
-      setCodeError('Please enter a valid team code');
+    if (!inviteToken.trim()) {
+      setError('Invite token is required');
       return;
     }
 
     try {
-      const team = await dispatch(joinTeam({ code: trimmedCode })).unwrap();
+      await dispatch(joinGroup({ 
+        groupId: groupId.trim(), 
+        inviteToken: inviteToken.trim() 
+      })).unwrap();
       
-      Alert.alert(
-        'Success', 
-        `You have joined "${team.name}" successfully!`, 
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      dispatch(fetchJoinedGroups());
+      showToast('You have joined the group successfully!', 'success');
+      router.back();
     } catch (err: any) {
-      if (err.includes('not found') || err.includes('invalid')) {
-        setCodeError('Invalid team code. Please check and try again.');
-      } else if (err.includes('already')) {
-        setCodeError('You are already a member of this team.');
+      console.log('Join error:', err);
+      const errorMsg = typeof err === 'string' ? err : err?.message || 'Failed to join group';
+      
+      if (errorMsg.includes('not found')) {
+        setError('Group not found. Please check the Group ID.');
+      } else if (errorMsg.includes('invalid') || errorMsg.includes('Forbidden')) {
+        setError('Invalid invite token. Please check and try again.');
+      } else if (errorMsg.includes('already')) {
+        setError('You are already a member of this group.');
+      } else if (errorMsg.includes('Authorization') || errorMsg.includes('401')) {
+        showToast('Session expired. Please login again.', 'error');
       } else {
-        Alert.alert('Error', err || 'Failed to join team');
+        showToast(errorMsg, 'error');
       }
     }
-  };
-
-  const handleCodeChange = (text: string) => {
-    // Auto uppercase and remove spaces
-    setCode(text.toUpperCase().replace(/\s/g, ''));
-    setCodeError('');
   };
 
   return (
@@ -74,7 +76,7 @@ export default function JoinTeamScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Join Team</Text>
+          <Text style={styles.headerTitle}>Join Group</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -91,39 +93,40 @@ export default function JoinTeamScreen() {
           </View>
 
           <Text style={styles.subtitle}>
-            Enter the team code shared by your team admin to join an existing team.
+            Enter the group ID and invite token shared by your group admin to join.
           </Text>
 
           <Input
-            label="Team Code"
-            placeholder="Enter team code (e.g., ABC123)"
-            value={code}
-            onChangeText={handleCodeChange}
-            error={codeError}
-            autoCapitalize="characters"
+            label="Group ID"
+            placeholder="Enter group ID (UUID)"
+            value={groupId}
+            onChangeText={(text) => { setGroupId(text); setError(''); }}
+            autoCapitalize="none"
             autoCorrect={false}
-            maxLength={10}
           />
 
-          <View style={styles.codePreview}>
-            <Text style={styles.codePreviewLabel}>Code Preview:</Text>
-            <Text style={styles.codePreviewValue}>
-              {code || '------'}
-            </Text>
-          </View>
+          <Input
+            label="Invite Token"
+            placeholder="Enter invite token"
+            value={inviteToken}
+            onChangeText={(text) => { setInviteToken(text); setError(''); }}
+            error={error}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
           <View style={styles.infoBox}>
             <Ionicons name="help-circle-outline" size={20} color="#FF9800" />
             <Text style={styles.infoText}>
-              Don't have a code? Ask your team admin to share the team code with you.
+              Don't have an invite? Ask your group admin to share the group ID and invite token with you.
             </Text>
           </View>
 
           <Button
-            title="Join Team"
+            title="Join Group"
             onPress={handleJoin}
             loading={isLoading}
-            disabled={isLoading || !code.trim()}
+            disabled={isLoading || !groupId.trim() || !inviteToken.trim()}
             style={styles.joinButton}
           />
         </ScrollView>
@@ -184,24 +187,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 20,
-  },
-  codePreview: {
-    alignItems: 'center',
-    marginBottom: 24,
-    padding: 16,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-  },
-  codePreviewLabel: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 8,
-  },
-  codePreviewValue: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#333',
-    letterSpacing: 4,
   },
   infoBox: {
     flexDirection: 'row',

@@ -24,6 +24,7 @@ const initialState: AuthState = {
 const storeAuthData = async (response: AuthResponse) => {
   await AsyncStorage.setItem('accessToken', response.accessToken);
   await AsyncStorage.setItem('refreshToken', response.refreshToken);
+  await AsyncStorage.setItem('refreshTokenId', response.refreshTokenId);
   await AsyncStorage.setItem('user', JSON.stringify(response.user));
 };
 
@@ -93,13 +94,19 @@ export const restoreAuth = createAsyncThunk(
 );
 
 // Async thunk for logout
-export const logout = createAsyncThunk('auth/logout', async () => {
+export const logout = createAsyncThunk('auth/logout', async (_, { getState }) => {
   try {
-    await authService.logout();
+    const state = getState() as { auth: AuthState };
+    const refreshToken = state.auth.refreshToken || await AsyncStorage.getItem('refreshToken');
+    const refreshTokenId = await AsyncStorage.getItem('refreshTokenId');
+    
+    if (refreshToken && refreshTokenId) {
+      await authService.logout({ refreshToken, refreshTokenId });
+    }
   } catch {
     // Ignore logout API errors
   }
-  await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+  await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'refreshTokenId', 'user']);
 });
 
 const authSlice = createSlice({

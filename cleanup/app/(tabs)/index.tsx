@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import MonthCalendar from '@/components/ui/MonthCalendar';
 import TaskCard from '@/components/ui/TaskCard';
 import ReminderCard from '@/components/ui/ReminderCard';
-import { currentUser, todayTasks, reminders } from '@/data/mockData';
+import { todayTasks, reminders } from '@/data/mockData';
+import { useAppSelector } from '@/store/hooks';
 
 export default function HomeScreen() {
+  const { user } = useAppSelector((state) => state.auth);
+  
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showMonthPicker, setShowMonthPicker] = useState(false);
 
@@ -24,6 +28,8 @@ export default function HomeScreen() {
     setSelectedDate(newDate);
   };
 
+  const userName = user?.name || 'User';
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -35,14 +41,14 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{getGreeting()},</Text>
-            <Text style={styles.userName}>{currentUser.name}</Text>
+            <Text style={styles.userName}>{userName}</Text>
           </View>
           <TouchableOpacity style={styles.avatarContainer}>
-            {currentUser.avatar ? (
-              <Image source={{ uri: currentUser.avatar }} style={styles.avatar} />
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>{currentUser.name.charAt(0)}</Text>
+                <Text style={styles.avatarText}>{userName.charAt(0)}</Text>
               </View>
             )}
           </TouchableOpacity>

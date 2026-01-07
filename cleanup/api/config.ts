@@ -19,8 +19,19 @@ export const ENDPOINTS = {
     ME: '/users/me',
     UPDATE: '/users/me',
     BY_ID: (id: string) => `/users/${id}`,
+    BY_GROUP: (groupId: string) => `/user/group/${groupId}`,
   },
-  // Teams
+  // Groups
+  GROUPS: {
+    CREATE: '/group',
+    JOINED: '/group/joined',
+    JOIN: '/group/join',
+    LEAVE: (groupId: string) => `/group/${groupId}/leave`,
+    DELETE: (groupId: string) => `/group/${groupId}`,
+    INVITE: (groupId: string) => `/group/${groupId}/invite`,
+    REMOVE_MEMBER: (groupId: string, userId: string) => `/group/${groupId}/member/${userId}`,
+  },
+  // Teams (legacy)
   TEAMS: {
     LIST: '/teams',
     CREATE: '/teams',

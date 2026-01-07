@@ -45,7 +45,54 @@ export interface RefreshTokenRequest {
   refreshToken: string;
 }
 
-// Team Types
+// Team Types (now Group)
+export interface Group {
+  id: string;
+  title: string;
+  description: string;
+  UserGroupTask?: {
+    isAdmin: boolean;
+  };
+}
+
+export interface GroupMember {
+  id: string;
+  email: string;
+  name: string;
+  lastname: string;
+  avatar: string;
+  UserGroupTask: {
+    isAdmin: boolean;
+    penalty_status: boolean;
+  };
+}
+
+export interface GroupMembersResponse {
+  groupId: string;
+  users: GroupMember[];
+}
+
+export interface GroupWithAdmin {
+  group: Group;
+  isAdmin: boolean;
+}
+
+export interface CreateGroupRequest {
+  title: string;
+  description: string;
+}
+
+export interface JoinGroupRequest {
+  groupId: string;
+  inviteToken: string;
+}
+
+export interface InviteTokenResponse {
+  inviteToken: string;
+  message: string;
+}
+
+// Legacy Team types (keep for compatibility)
 export interface Team {
   id: string;
   name: string;

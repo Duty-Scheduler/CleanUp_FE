@@ -40,10 +40,14 @@ class ApiClient {
     // Add auth token if required
     if (requiresAuth) {
       const token = await this.getAuthToken();
+      console.log('Auth token:', token ? 'Present' : 'Missing');
       if (token) {
         requestHeaders['Authorization'] = `Bearer ${token}`;
       }
     }
+
+    console.log(`API Request: ${method} ${this.baseUrl}${endpoint}`);
+    if (body) console.log('Request body:', JSON.stringify(body));
 
     const config: RequestInit = {
       method,
@@ -56,9 +60,11 @@ class ApiClient {
 
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, config);
+      console.log(`API Response: ${response.status}`);
 
       // Handle 401 - try to refresh token
       if (response.status === 401 && requiresAuth) {
+        console.log('401 received, attempting token refresh...');
         const refreshed = await this.refreshToken();
         if (refreshed) {
           // Retry the request with new token
@@ -74,6 +80,7 @@ class ApiClient {
 
       return this.handleResponse<T>(response);
     } catch (error) {
+      console.log('API Error:', error);
       throw this.handleError(error);
     }
   }

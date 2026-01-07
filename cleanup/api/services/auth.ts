@@ -2,6 +2,11 @@ import { apiClient } from '../client';
 import { ENDPOINTS } from '../config';
 import { AuthResponse, GoogleLoginRequest, LoginRequest, RegisterRequest, RefreshTokenRequest } from '../types';
 
+interface LogoutRequest {
+  refreshToken: string;
+  refreshTokenId: string;
+}
+
 export const authService = {
   /**
    * Login with email and password
@@ -30,6 +35,6 @@ export const authService = {
   /**
    * Logout user
    */
-  logout: () =>
-    apiClient.post<void>(ENDPOINTS.AUTH.LOGOUT),
+  logout: (data: LogoutRequest) =>
+    apiClient.post<{ message: string }>(ENDPOINTS.AUTH.LOGOUT, data),
 };
