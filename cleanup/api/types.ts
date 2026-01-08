@@ -163,6 +163,8 @@ export interface MyTaskByDate {
   proof?: string;
   createdAt: string;
   Users: TaskUser[];
+  Group?: TaskGroup;
+  groupId?: string;
 }
 
 export interface MyTasksByDateResponse {
@@ -176,6 +178,7 @@ export interface UserTask {
   title: string;
   description?: string;
   status: boolean;
+  proof?: any[];
   Group: TaskGroup;
 }
 
@@ -183,6 +186,30 @@ export interface MyTasksResponse {
   userId: string;
   total: number;
   tasks: UserTask[];
+}
+
+export interface TaskDetailUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  UserGroupTask?: {
+    penalty_status: boolean;
+  };
+}
+
+export interface TaskDetail {
+  id: string;
+  title: string;
+  description?: string;
+  status: boolean;
+  proof?: any[];
+  createdAt: string;
+  Users: TaskDetailUser[];
+}
+
+export interface TaskDetailResponse {
+  task: TaskDetail;
 }
 
 export interface Task {

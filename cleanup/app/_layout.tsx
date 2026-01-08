@@ -59,6 +59,12 @@ function RootLayoutNav() {
             headerShown: false,
           }} 
         />
+        <Stack.Screen 
+          name="task-detail" 
+          options={{ 
+            headerShown: false,
+          }} 
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

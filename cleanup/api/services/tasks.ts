@@ -1,6 +1,6 @@
 import { apiClient } from '../client';
 import { ENDPOINTS } from '../config';
-import { MyTasksResponse, MyTasksByDateResponse, GroupTasksResponse, CreateTaskRequest, UpdateTaskRequest } from '../types';
+import { MyTasksResponse, MyTasksByDateResponse, GroupTasksResponse, CreateTaskRequest, UpdateTaskRequest, TaskDetailResponse } from '../types';
 
 export const taskService = {
   /**
@@ -21,6 +21,12 @@ export const taskService = {
    */
   getByGroup: (groupId: string) =>
     apiClient.get<GroupTasksResponse>(ENDPOINTS.TASKS.BY_GROUP(groupId)),
+
+  /**
+   * Get task detail by ID in a group
+   */
+  getTaskDetail: (groupId: string, taskId: string) =>
+    apiClient.get<TaskDetailResponse>(ENDPOINTS.TASKS.DETAIL(groupId, taskId)),
 
   /**
    * Create a new task in a group (admin only)

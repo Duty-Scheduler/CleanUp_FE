@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import Button from '@/components/ui/Button';
@@ -48,14 +49,8 @@ export default function GroupDetailScreen() {
   const group = groups.find(g => g.id === groupId) || currentGroup;
   const isAdmin = group?.UserGroupTask?.isAdmin || false;
 
-  useEffect(() => {
-    if (group) {
-      dispatch(setCurrentGroup(group));
-    }
-  }, [group, dispatch]);
-
   // Fetch group members
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     if (!groupId) return;
     try {
       setLoadingMembers(true);
@@ -66,10 +61,10 @@ export default function GroupDetailScreen() {
     } finally {
       setLoadingMembers(false);
     }
-  };
+  }, [groupId]);
 
   // Fetch group tasks
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     if (!groupId) return;
     try {
       setLoadingTasks(true);
@@ -80,12 +75,31 @@ export default function GroupDetailScreen() {
     } finally {
       setLoadingTasks(false);
     }
-  };
-
-  useEffect(() => {
-    fetchMembers();
-    fetchTasks();
   }, [groupId]);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (group) {
+        dispatch(setCurrentGroup(group));
+      }
+      fetchMembers();
+      fetchTasks();
+    }, [group, dispatch, fetchMembers, fetchTasks])
+  );
+
+  const handleTaskPress = (task: GroupTask) => {
+    if (groupId) {
+      router.push({
+        pathname: '/task-detail',
+        params: {
+          groupId: groupId,
+          taskId: task.id,
+          groupName: group?.title,
+        },
+      });
+    }
+  };
 
   const handleGenerateInvite = async () => {
     if (!groupId) return;
@@ -294,7 +308,12 @@ export default function GroupDetailScreen() {
             <ActivityIndicator size="small" color="#2196F3" />
           ) : tasks.length > 0 ? (
             tasks.slice(0, 3).map((task) => (
-              <View key={task.id} style={styles.taskPreviewCard}>
+              <TouchableOpacity 
+                key={task.id} 
+                style={styles.taskPreviewCard}
+                onPress={() => handleTaskPress(task)}
+                activeOpacity={0.7}
+              >
                 <View style={styles.taskCheckbox}>
                   {task.status ? (
                     <Ionicons name="checkbox" size={22} color="#4CAF50" />
@@ -323,7 +342,8 @@ export default function GroupDetailScreen() {
                     </View>
                   )}
                 </View>
-              </View>
+                <Ionicons name="chevron-forward" size={20} color="#CCC" />
+              </TouchableOpacity>
             ))
           ) : (
             <Text style={styles.noTasksText}>No tasks yet</Text>
@@ -428,7 +448,15 @@ export default function GroupDetailScreen() {
               <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#2196F3" /></View>
             ) : tasks.length > 0 ? (
               tasks.map((task) => (
-                <View key={task.id} style={styles.taskCard}>
+                <TouchableOpacity 
+                  key={task.id} 
+                  style={styles.taskCard}
+                  onPress={() => {
+                    setShowTasksModal(false);
+                    handleTaskPress(task);
+                  }}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.taskCardHeader}>
                     <View style={styles.taskCheckbox}>
                       {task.status ? <Ionicons name="checkbox" size={24} color="#4CAF50" /> : <Ionicons name="square-outline" size={24} color="#CCC" />}
@@ -465,17 +493,24 @@ export default function GroupDetailScreen() {
                   )}
                   {isAdmin && (
                     <View style={styles.taskCardActions}>
-                      <TouchableOpacity style={styles.taskActionBtn}>
+                      <TouchableOpacity style={styles.taskActionBtn} onPress={(e) => { e.stopPropagation(); }}>
                         <Ionicons name="create-outline" size={18} color="#2196F3" />
                         <Text style={styles.taskActionBtnText}>Edit</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.taskActionBtn} onPress={() => handleDeleteTask(task)} disabled={deletingTaskId === task.id}>
+                      <TouchableOpacity 
+                        style={styles.taskActionBtn} 
+                        onPress={(e) => { 
+                          e.stopPropagation(); 
+                          handleDeleteTask(task); 
+                        }} 
+                        disabled={deletingTaskId === task.id}
+                      >
                         {deletingTaskId === task.id ? <ActivityIndicator size="small" color="#F44336" /> : <Ionicons name="trash-outline" size={18} color="#F44336" />}
                         <Text style={[styles.taskActionBtnText, { color: '#F44336' }]}>Delete</Text>
                       </TouchableOpacity>
                     </View>
                   )}
-                </View>
+                </TouchableOpacity>
               ))
             ) : (
               <View style={styles.emptyTasks}>

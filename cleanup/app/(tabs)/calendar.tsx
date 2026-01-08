@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSelector } from '@/store/hooks';
-import { taskService, MyTaskByDate } from '@/api';
+import { taskService, UserTask } from '@/api';
 
 const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const MONTHS = [
@@ -21,31 +21,22 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-// Format date to YYYY-MM-DD
-const formatDateToAPI = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
 export default function CalendarScreen() {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [tasks, setTasks] = useState<MyTaskByDate[]>([]);
+  const [tasks, setTasks] = useState<UserTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch tasks for selected date
-  const fetchTasksByDate = useCallback(async (date: Date) => {
+  // Fetch all my tasks
+  const fetchMyTasks = useCallback(async () => {
     if (!isAuthenticated) return;
     
     try {
       setLoading(true);
-      const dateStr = formatDateToAPI(date);
-      const response = await taskService.getMyTasksByDate(dateStr);
+      const response = await taskService.getMyTasks();
       setTasks(response.tasks || []);
     } catch (error) {
       console.log('Failed to fetch tasks:', error);
@@ -56,14 +47,16 @@ export default function CalendarScreen() {
     }
   }, [isAuthenticated]);
 
-  // Fetch tasks when selected date changes
-  useEffect(() => {
-    fetchTasksByDate(selectedDate);
-  }, [selectedDate, fetchTasksByDate]);
+  // Fetch tasks when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchMyTasks();
+    }, [fetchMyTasks])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchTasksByDate(selectedDate);
+    fetchMyTasks();
   };
 
   // Calendar helpers
@@ -162,13 +155,26 @@ export default function CalendarScreen() {
   };
 
   // Calculate completion stats
-  const completedTasks = tasks.filter(t => t.status === 'completed').length;
+  const completedTasks = tasks.filter(t => t.status === true).length;
   const totalTasks = tasks.length;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   // Format selected date for display
   const formatSelectedDate = () => {
     return `${MONTHS[selectedDate.getMonth()]} ${selectedDate.getDate()}, ${selectedDate.getFullYear()}`;
+  };
+
+  const handleTaskPress = (task: UserTask) => {
+    if (task.Group?.id) {
+      router.push({
+        pathname: '/task-detail',
+        params: {
+          groupId: task.Group.id,
+          taskId: task.id,
+          groupName: task.Group.title,
+        },
+      });
+    }
   };
 
   return (
@@ -253,17 +259,22 @@ export default function CalendarScreen() {
             </View>
           ) : tasks.length > 0 ? (
             tasks.map((task) => (
-              <View key={task.id} style={styles.taskCard}>
+              <TouchableOpacity 
+                key={task.id} 
+                style={styles.taskCard}
+                onPress={() => handleTaskPress(task)}
+                activeOpacity={0.7}
+              >
                 <View style={styles.taskHeader}>
-                  <TouchableOpacity style={styles.checkbox}>
-                    {task.status === 'completed' ? (
+                  <View style={styles.checkbox}>
+                    {task.status ? (
                       <Ionicons name="checkbox" size={24} color="#4CAF50" />
                     ) : (
                       <Ionicons name="square-outline" size={24} color="#CCC" />
                     )}
-                  </TouchableOpacity>
+                  </View>
                   <View style={styles.taskInfo}>
-                    <Text style={[styles.taskTitle, task.status === 'completed' && styles.taskTitleCompleted]}>
+                    <Text style={[styles.taskTitle, task.status && styles.taskTitleCompleted]}>
                       {task.title}
                     </Text>
                     {task.description && (
@@ -271,58 +282,28 @@ export default function CalendarScreen() {
                         {task.description}
                       </Text>
                     )}
+                    {task.Group && (
+                      <View style={styles.taskGroupBadge}>
+                        <Ionicons name="people-outline" size={12} color="#666" />
+                        <Text style={styles.taskGroupName}>{task.Group.title}</Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={[styles.statusBadge, task.status === 'completed' ? styles.statusDone : styles.statusPending]}>
-                    <Text style={[styles.statusText, task.status === 'completed' ? styles.statusDoneText : styles.statusPendingText]}>
-                      {task.status === 'completed' ? 'Done' : 'Pending'}
+                  <View style={[styles.statusBadge, task.status ? styles.statusDone : styles.statusPending]}>
+                    <Text style={[styles.statusText, task.status ? styles.statusDoneText : styles.statusPendingText]}>
+                      {task.status ? 'Done' : 'Pending'}
                     </Text>
                   </View>
                 </View>
 
-                {/* Assigned Users */}
-                {task.Users && task.Users.length > 0 && (
-                  <View style={styles.assigneesSection}>
-                    <Text style={styles.assigneesLabel}>Assigned to:</Text>
-                    <View style={styles.assigneesList}>
-                      {task.Users.map((user) => (
-                        <View key={user.id} style={styles.assigneeChip}>
-                          {user.avatar ? (
-                            <Image source={{ uri: user.avatar }} style={styles.assigneeAvatar} />
-                          ) : (
-                            <View style={styles.assigneePlaceholder}>
-                              <Text style={styles.assigneeInitial}>{user.name?.charAt(0)}</Text>
-                            </View>
-                          )}
-                          <Text style={styles.assigneeName}>{user.name}</Text>
-                          {user.TaskUser?.penalty_status && user.TaskUser.penalty_status !== 'none' && (
-                            <Ionicons name="warning" size={12} color="#F44336" />
-                          )}
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {/* Proof Image */}
-                {task.proof && (
+                {/* Proof */}
+                {task.proof && task.proof.length > 0 && (
                   <View style={styles.proofSection}>
                     <Text style={styles.proofLabel}>Proof submitted</Text>
                     <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
                   </View>
                 )}
-
-                {/* Task Actions */}
-                <View style={styles.taskActions}>
-                  <TouchableOpacity style={styles.taskAction}>
-                    <Ionicons name="create-outline" size={18} color="#2196F3" />
-                    <Text style={styles.taskActionText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.taskAction}>
-                    <Ionicons name="trash-outline" size={18} color="#F44336" />
-                    <Text style={[styles.taskActionText, { color: '#F44336' }]}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              </TouchableOpacity>
             ))
           ) : (
             <View style={styles.emptyState}>
@@ -549,6 +530,16 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 18,
   },
+  taskGroupBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+  },
+  taskGroupName: {
+    fontSize: 12,
+    color: '#666',
+  },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -570,55 +561,6 @@ const styles = StyleSheet.create({
   statusPendingText: {
     color: '#FF9800',
   },
-  assigneesSection: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#EEE',
-  },
-  assigneesLabel: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 8,
-  },
-  assigneesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  assigneeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#EEE',
-    gap: 6,
-  },
-  assigneeAvatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-  },
-  assigneePlaceholder: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#2196F3',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  assigneeInitial: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  assigneeName: {
-    fontSize: 12,
-    color: '#333',
-  },
   proofSection: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -631,24 +573,6 @@ const styles = StyleSheet.create({
   proofLabel: {
     fontSize: 12,
     color: '#4CAF50',
-  },
-  taskActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 16,
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#EEE',
-  },
-  taskAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  taskActionText: {
-    fontSize: 13,
-    color: '#2196F3',
   },
   emptyState: {
     alignItems: 'center',

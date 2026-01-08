@@ -46,6 +46,7 @@ export const ENDPOINTS = {
     MY_TASKS: '/task/me',
     MY_TASKS_BY_DATE: '/task/myTask/by-date',
     BY_GROUP: (groupId: string) => `/task/group/${groupId}`,
+    DETAIL: (groupId: string, taskId: string) => `/task/group/${groupId}/task/${taskId}`,
     CREATE: (groupId: string) => `/task/group/${groupId}`,
     UPDATE: (taskId: string) => `/task/${taskId}`,
     DELETE: (taskId: string) => `/task/${taskId}`,

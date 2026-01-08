@@ -34,6 +34,7 @@ class ApiClient {
 
     const requestHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
+      'accept': 'application/json',
       ...headers,
     };
 
