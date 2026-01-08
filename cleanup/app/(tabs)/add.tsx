@@ -69,9 +69,7 @@ export default function AddScreen() {
     }, [fetchGroups])
   );
   // TimePicker state
-  const [showTimePicker, setShowTimePicker] = useState<'start' | 'end' | null>(null);
-  const [startHour, setStartHour] = useState(12);
-  const [startMinute, setStartMinute] = useState(0);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [endHour, setEndHour] = useState(14);
   const [endMinute, setEndMinute] = useState(0);
   const today = new Date();
@@ -79,12 +77,7 @@ export default function AddScreen() {
   const [showStartCalendar, setShowStartCalendar] = useState(false);
   const [otherStartDate, setOtherStartDate] = useState<Date | null>(null);
   const [tempStartDate, setTempStartDate] = useState<Date>(otherStartDate || today);
-  const [selectedEndDate, setSelectedEndDate] = useState(0);
-  const [showEndCalendar, setShowEndCalendar] = useState(false);
-  const [otherEndDate, setOtherEndDate] = useState<Date | null>(null);
-  const [tempEndDate, setTempEndDate] = useState<Date>(otherEndDate || today);
   const [showMonthPickerStart, setShowMonthPickerStart] = useState(false);
-  const [showMonthPickerEnd, setShowMonthPickerEnd] = useState(false);
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('low');
 
   interface SectionProps {
@@ -153,7 +146,6 @@ export default function AddScreen() {
   else startDateValue = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2);
 
   const START_DATES = getDates(today, otherStartDate);
-  const END_DATES = getDates(startDateValue, otherEndDate);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -227,102 +219,22 @@ export default function AddScreen() {
           </Modal>
         </Section>
 
-        {/* Select End Date */}
-        <Section title="Select end date">
-          <DateRow
-            dates={END_DATES}
-            selectedIndex={selectedEndDate}
-            onSelect={(index) => {
-              if (index === 3) {
-                setTempEndDate(startDateValue);
-                setShowEndCalendar(true);
-              } else {
-                setSelectedEndDate(index);
-                if (otherEndDate) setOtherEndDate(null);
-              }
-            }}
-            monthList={END_DATES.map((item, idx) => {
-              if (otherEndDate) return otherEndDate.getMonth();
-              return startDateValue.getMonth();
-            })}
-            yearList={END_DATES.map((item, idx) => {
-              if (otherEndDate) return otherEndDate.getFullYear();
-              return startDateValue.getFullYear();
-            })}
-          />
-          {/* Modal MonthCalendar for Other End */}
-          <Modal
-            visible={showEndCalendar}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowEndCalendar(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <MonthCalendar
-                  selectedDate={tempEndDate}
-                  onSelectDate={(date) => setTempEndDate(date)}
-                  onSelectMonth={(month, year) => {
-                    const newDate = new Date(tempEndDate);
-                    newDate.setMonth(month);
-                    newDate.setFullYear(year);
-                    setTempEndDate(newDate);
-                  }}
-                  showMonthPicker={showMonthPickerEnd}
-                  setShowMonthPicker={setShowMonthPickerEnd}
-                  minDate={startDateValue}
-                />
-                <View style={styles.modalActions}>
-                  <TouchableOpacity onPress={() => setShowEndCalendar(false)} style={styles.modalCancelBtn}>
-                    <Text style={styles.modalActionText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => {
-                    setOtherEndDate(tempEndDate);
-                    setSelectedEndDate(3);
-                    setShowEndCalendar(false);
-                  }}>
-                    <Text style={styles.modalActionText}>OK</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </Modal>
-        </Section>
-
         {/* Select Time */}
         <Section title="Select time">
-          <View style={styles.timeCard}>
-            <TouchableOpacity onPress={() => setShowTimePicker('start')}>
-              <TimeBlock label="From" value={`${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`} />
-            </TouchableOpacity>
-            <Text style={styles.arrow}>›</Text>
-            <TouchableOpacity onPress={() => setShowTimePicker('end')}>
-              <TimeBlock label="To" value={`${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`} />
-            </TouchableOpacity>
-          </View>
-          {/* TimePicker Modals */}
+          <TouchableOpacity onPress={() => setShowTimePicker(true)} style={styles.timeCard}>
+            <TimeBlock label="Time" value={`${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`} />
+          </TouchableOpacity>
+          {/* TimePicker Modal */}
           <TimePicker
-            visible={showTimePicker === 'start'}
-            label="Select start time"
-            initialHour={startHour}
-            initialMinute={startMinute}
-            onClose={() => setShowTimePicker(null)}
-            onConfirm={(h, m) => {
-              setStartHour(h);
-              setStartMinute(m);
-              setShowTimePicker(null);
-            }}
-          />
-          <TimePicker
-            visible={showTimePicker === 'end'}
-            label="Select end time"
+            visible={showTimePicker}
+            label="Select time"
             initialHour={endHour}
             initialMinute={endMinute}
-            onClose={() => setShowTimePicker(null)}
+            onClose={() => setShowTimePicker(false)}
             onConfirm={(h, m) => {
               setEndHour(h);
               setEndMinute(m);
-              setShowTimePicker(null);
+              setShowTimePicker(false);
             }}
           />
         </Section>
@@ -425,20 +337,13 @@ export default function AddScreen() {
             setSelectedGroup(null);
             setSelectedMembers([]);
             setShowGroupPicker(false);
-            setStartHour(12);
-            setStartMinute(0);
             setEndHour(14);
             setEndMinute(0);
             setSelectedStartDate(0);
             setShowStartCalendar(false);
             setOtherStartDate(null);
             setTempStartDate(today);
-            setSelectedEndDate(0);
-            setShowEndCalendar(false);
-            setOtherEndDate(null);
-            setTempEndDate(today);
             setShowMonthPickerStart(false);
-            setShowMonthPickerEnd(false);
             setPriority('low');
             router.replace('/(tabs)');
           }}
@@ -494,20 +399,13 @@ export default function AddScreen() {
               setSelectedGroup(null);
               setSelectedMembers([]);
               setShowGroupPicker(false);
-              setStartHour(12);
-              setStartMinute(0);
               setEndHour(14);
               setEndMinute(0);
               setSelectedStartDate(0);
               setShowStartCalendar(false);
               setOtherStartDate(null);
               setTempStartDate(today);
-              setSelectedEndDate(0);
-              setShowEndCalendar(false);
-              setOtherEndDate(null);
-              setTempEndDate(today);
               setShowMonthPickerStart(false);
-              setShowMonthPickerEnd(false);
               setPriority('low');
             } catch (e) {
               Alert.alert('Error', 'Failed to create task.');
@@ -562,7 +460,7 @@ const styles = StyleSheet.create({
   timeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     backgroundColor: '#F3F6F9',
     borderRadius: 16,
     padding: 20,
