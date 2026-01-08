@@ -43,12 +43,14 @@ export const ENDPOINTS = {
   },
   // Tasks
   TASKS: {
-    LIST: '/tasks',
+    MY_TASKS: '/task/me',
+    MY_TASKS_BY_DATE: '/task/myTask/by-date',
+    BY_GROUP: (groupId: string) => `/task/group/${groupId}`,
     CREATE: (groupId: string) => `/task/group/${groupId}`,
-    BY_ID: (id: string) => `/tasks/${id}`,
-    BY_TEAM: (teamId: string) => `/teams/${teamId}/tasks`,
-    ASSIGN: (id: string) => `/tasks/${id}/assign`,
-    COMPLETE: (id: string) => `/tasks/${id}/complete`,
+    UPDATE: (taskId: string) => `/task/${taskId}`,
+    DELETE: (taskId: string) => `/task/${taskId}`,
+    UPLOAD_PROOF: (taskId: string) => `/task/${taskId}/proof`,
+    BY_DATE: (groupId: string) => `/task/group/${groupId}/tasks/by-date`,
   },
   // Schedules
   SCHEDULES: {

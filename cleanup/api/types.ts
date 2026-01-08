@@ -124,6 +124,67 @@ export interface JoinTeamRequest {
 }
 
 // Task Types
+export interface TaskGroup {
+  id: string;
+  title: string;
+}
+
+export interface TaskUser {
+  id: string | number;
+  name: string;
+  email: string;
+  avatar: string;
+  UserGroupTask?: {
+    penalty_status: boolean;
+  };
+  TaskUser?: {
+    penalty_status: string;
+  };
+}
+
+export interface GroupTask {
+  id: string;
+  title: string;
+  description?: string;
+  status: boolean;
+  Users: TaskUser[];
+}
+
+export interface GroupTasksResponse {
+  groupId: string;
+  tasks: GroupTask[];
+}
+
+export interface MyTaskByDate {
+  id: number | string;
+  title: string;
+  description?: string;
+  status: string;
+  proof?: string;
+  createdAt: string;
+  Users: TaskUser[];
+}
+
+export interface MyTasksByDateResponse {
+  date: string;
+  total: number;
+  tasks: MyTaskByDate[];
+}
+
+export interface UserTask {
+  id: string;
+  title: string;
+  description?: string;
+  status: boolean;
+  Group: TaskGroup;
+}
+
+export interface MyTasksResponse {
+  userId: string;
+  total: number;
+  tasks: UserTask[];
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -143,14 +204,14 @@ export interface Task {
 export interface CreateTaskRequest {
   title: string;
   description?: string;
-  penalty_description: string;
+  penalty_description?: string;
   assignId?: string[];
 }
 
 export interface UpdateTaskRequest {
   title?: string;
   description?: string;
-  status?: 'pending' | 'in-progress' | 'completed';
+  status?: boolean;
   assigneeIds?: string[];
   dueDate?: string;
 }

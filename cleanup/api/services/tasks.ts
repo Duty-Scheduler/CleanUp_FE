@@ -1,68 +1,54 @@
 import { apiClient } from '../client';
 import { ENDPOINTS } from '../config';
-import { CreateTaskRequest, Task, UpdateTaskRequest } from '../types';
-
-export interface TaskFilters {
-  teamId?: string;
-  status?: 'pending' | 'in-progress' | 'completed';
-  date?: string;
-  assigneeId?: string;
-}
+import { MyTasksResponse, MyTasksByDateResponse, GroupTasksResponse, CreateTaskRequest, UpdateTaskRequest } from '../types';
 
 export const taskService = {
   /**
-   * Get all tasks with optional filters
+   * Get all tasks assigned to the current user
    */
-  getAll: (filters?: TaskFilters) => {
-    const params = new URLSearchParams();
-    if (filters?.teamId) params.append('teamId', filters.teamId);
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.date) params.append('date', filters.date);
-    if (filters?.assigneeId) params.append('assigneeId', filters.assigneeId);
-
-    const query = params.toString();
-    return apiClient.get<Task[]>(`${ENDPOINTS.TASKS.LIST}${query ? `?${query}` : ''}`);
-  },
+  getMyTasks: () =>
+    apiClient.get<MyTasksResponse>(ENDPOINTS.TASKS.MY_TASKS),
 
   /**
-   * Get task by ID
+   * Get current user's tasks by specific date
+   * @param date - Date in format YYYY-MM-DD
    */
-  getById: (id: string) =>
-    apiClient.get<Task>(ENDPOINTS.TASKS.BY_ID(id)),
+  getMyTasksByDate: (date: string) =>
+    apiClient.get<MyTasksByDateResponse>(`${ENDPOINTS.TASKS.MY_TASKS_BY_DATE}?date=${date}`),
 
   /**
-   * Get tasks by team
+   * Get all tasks in a group
    */
-  getByTeam: (teamId: string) =>
-    apiClient.get<Task[]>(ENDPOINTS.TASKS.BY_TEAM(teamId)),
+  getByGroup: (groupId: string) =>
+    apiClient.get<GroupTasksResponse>(ENDPOINTS.TASKS.BY_GROUP(groupId)),
 
   /**
-   * Create a new task
+   * Create a new task in a group (admin only)
    */
   create: (groupId: string, data: CreateTaskRequest) =>
-    apiClient.post<Task>(ENDPOINTS.TASKS.CREATE(groupId), data),
+    apiClient.post<any>(ENDPOINTS.TASKS.CREATE(groupId), data),
 
   /**
-   * Update task
+   * Update a task (admin only)
    */
-  update: (id: string, data: UpdateTaskRequest) =>
-    console.log(apiClient.patch<Task>(ENDPOINTS.TASKS.BY_ID(id), data)),
+  update: (taskId: string, data: UpdateTaskRequest) =>
+    apiClient.put<any>(ENDPOINTS.TASKS.UPDATE(taskId), data),
 
   /**
-   * Delete task
+   * Delete a task (admin only)
    */
-  delete: (id: string) =>
-    apiClient.delete<void>(ENDPOINTS.TASKS.BY_ID(id)),
+  delete: (taskId: string) =>
+    apiClient.delete<{ message: string }>(ENDPOINTS.TASKS.DELETE(taskId)),
 
   /**
-   * Assign task to users
+   * Upload proof image for a task
    */
-  assign: (id: string, assigneeIds: string[]) =>
-    apiClient.post<Task>(ENDPOINTS.TASKS.ASSIGN(id), { assigneeIds }),
+  uploadProof: (taskId: string, formData: FormData) =>
+    apiClient.post<any>(ENDPOINTS.TASKS.UPLOAD_PROOF(taskId), formData),
 
   /**
-   * Mark task as complete
+   * Get tasks in a group by specific date
    */
-  complete: (id: string) =>
-    apiClient.post<Task>(ENDPOINTS.TASKS.COMPLETE(id)),
+  getByDate: (groupId: string, date: string) =>
+    apiClient.get<any>(`${ENDPOINTS.TASKS.BY_DATE(groupId)}?date=${date}`),
 };
