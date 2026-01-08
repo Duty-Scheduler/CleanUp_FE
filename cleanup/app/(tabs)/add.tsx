@@ -464,6 +464,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F6F9',
     borderRadius: 16,
     padding: 20,
+    alignSelf: 'center',
   },
   timeLabel: { fontSize: 13, color: '#999' },
   timeValue: { fontSize: 28, fontWeight: '700', color: '#1A1A1A' },
