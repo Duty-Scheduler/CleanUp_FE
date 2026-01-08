@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { userService, UserStats } from '@/api/services/users';
 import PageHeader from '@/components/ui/PageHeader';
 import SettingItem from '@/components/ui/SettingItem';
 import { currentUser as mockUser } from '@/data/mockData';
-import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
-import { userService, UserStats } from '@/api/services/users';
+import { Ionicons } from '@expo/vector-icons';
+import { getAnalytics, logEvent } from '@react-native-firebase/analytics';
+import { getApp } from '@react-native-firebase/app';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
   const dispatch = useAppDispatch();
@@ -39,12 +41,89 @@ export default function ProfileScreen() {
     fetchStats();
   }, [isAuthenticated]);
 
+  // Track profile view
+  useEffect(() => {
+    const trackProfileView = async () => {
+      const app = getApp();
+      const analytics = getAnalytics(app);
+      
+      // Always use current user ID - authenticated user takes priority
+      const userId = await userService.getMe().id;
+
+      await logEvent(analytics, 'screen_view' as any, {
+        screen_name: 'Profile',
+        screen_class: 'ProfileScreen',
+        user_id: userId,
+        is_authenticated: isAuthenticated,
+      });
+    };
+    
+    trackProfileView();
+  }, []);
+
   // Use Redux user if authenticated, otherwise use mock user
   const displayUser = isAuthenticated && user ? {
+    id: user.id,
     name: `${user.name} ${user.lastname || ''}`.trim(),
     email: user.email,
     avatar: user.avatar,
   } : mockUser;
+
+  // Handle setting changes with analytics
+  const handleNotificationChange = async (value: boolean) => {
+    setNotifications(value);
+    const app = getApp();
+    const analytics = getAnalytics(app);
+    
+    // Always use current user ID - authenticated user takes priority
+    const userId = (isAuthenticated && user?.id) || displayUser.id || 'guest';
+    
+    await logEvent(analytics, 'setting_changed', {
+      setting_type: 'notifications',
+      setting_value: value,
+      user_id: userId,
+      is_authenticated: isAuthenticated,
+    });
+    
+    console.log('Analytics - Notification changed:', { 
+      user_id: userId, 
+      isAuthenticated, 
+      authenticated_user_id: user?.id,
+      display_user_id: displayUser.id 
+    });
+  };
+
+  const handlePushAlertChange = async (value: boolean) => {
+    setPushAlerts(value);
+    const app = getApp();
+    const analytics = getAnalytics(app);
+    
+    // Always use current user ID - authenticated user takes priority
+    const userId = (isAuthenticated && user?.id) || displayUser.id || 'guest';
+    
+    await logEvent(analytics, 'setting_changed', {
+      setting_type: 'push_alerts',
+      setting_value: value,
+      user_id: userId,
+      is_authenticated: isAuthenticated,
+    });
+  };
+
+  const handleSoundEffectChange = async (value: boolean) => {
+    setSoundEffects(value);
+    const app = getApp();
+    const analytics = getAnalytics(app);
+    
+    // Always use current user ID - authenticated user takes priority
+    const userId = (isAuthenticated && user?.id) || displayUser.id || 'guest';
+    
+    await logEvent(analytics, 'setting_changed', {
+      setting_type: 'sound_effects',
+      setting_value: value,
+      user_id: userId,
+      is_authenticated: isAuthenticated,
+    });
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -55,7 +134,19 @@ export default function ProfileScreen() {
         {
           text: 'Log out',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            // Track logout event
+            const app = getApp();
+            const analytics = getAnalytics(app);
+            
+            // Always use current user ID - authenticated user takes priority
+            const userId = (isAuthenticated && user?.id) || (mockUser?.id) || 'guest';
+            
+            await logEvent(analytics, 'user_logout', {
+              user_id: userId,
+              is_authenticated: isAuthenticated,
+              timestamp: new Date().toISOString(),
+            });
             dispatch(logout());
           },
         },
@@ -173,21 +264,21 @@ export default function ProfileScreen() {
             subtitle="Receive app notifications"
             hasSwitch
             switchValue={notifications}
-            onSwitchChange={setNotifications}
+            onSwitchChange={handleNotificationChange}
           />
           <SettingItem
             title="Push Alerts"
             subtitle="Get push notifications on mobile"
             hasSwitch
             switchValue={pushAlerts}
-            onSwitchChange={setPushAlerts}
+            onSwitchChange={handlePushAlertChange}
           />
           <SettingItem
             title="Sound Effects"
             subtitle="Sound notifications for actions"
             hasSwitch
             switchValue={soundEffects}
-            onSwitchChange={setSoundEffects}
+            onSwitchChange={handleSoundEffectChange}
           />
           <SettingItem
             title="Log out"

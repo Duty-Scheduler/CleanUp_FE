@@ -1,6 +1,6 @@
 // Auth Types
 export interface User {
-  id?: string;
+  id: string;
   googleId?: string;
   email: string;
   name: string;

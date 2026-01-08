@@ -1,6 +1,6 @@
 import { apiClient } from '../client';
 import { ENDPOINTS } from '../config';
-import { User, GroupMembersResponse } from '../types';
+import { GroupMembersResponse, User } from '../types';
 
 export interface UpdateUserRequest {
   name?: string;
