@@ -6,11 +6,28 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import MonthCalendar from '@/components/ui/MonthCalendar';
 import ReminderCard from '@/components/ui/ReminderCard';
-import { reminders } from '@/data/mockData';
 import { useAppSelector } from '@/store/hooks';
-import { taskService, UserTask } from '@/api';
+import { taskService, UserTask, MyTaskByDate } from '@/api';
 
 const MAX_TASKS_DISPLAY = 2;
+const MAX_REMINDERS_DISPLAY = 2;
+
+// Helper to format time from ISO date string
+const formatTaskTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
+// Helper to get end of day timestamp for sorting
+const getEndOfDayTimestamp = (dateString: string): number => {
+  const date = new Date(dateString);
+  return date.getTime();
+};
+
+// Colors for reminder cards
+const REMINDER_COLORS = ['#2196F3', '#FF9800', '#4CAF50', '#E91E63'];
 
 export default function HomeScreen() {
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
@@ -20,6 +37,10 @@ export default function HomeScreen() {
   const [tasks, setTasks] = useState<UserTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [totalTasks, setTotalTasks] = useState(0);
+  
+  // State for today's reminders
+  const [todayTasks, setTodayTasks] = useState<MyTaskByDate[]>([]);
+  const [loadingReminders, setLoadingReminders] = useState(false);
 
   // Fetch all my tasks
   const fetchMyTasks = useCallback(async () => {
@@ -39,11 +60,36 @@ export default function HomeScreen() {
     }
   }, [isAuthenticated]);
 
+  // Fetch today's tasks for reminders
+  const fetchTodayTasks = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      setLoadingReminders(true);
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const response = await taskService.getMyTasksByDate(dateStr);
+      
+      // Sort by nearest deadline (createdAt as proxy for deadline) and take top 2
+      const sortedTasks = (response.tasks || [])
+        .sort((a, b) => getEndOfDayTimestamp(a.createdAt) - getEndOfDayTimestamp(b.createdAt))
+        .slice(0, MAX_REMINDERS_DISPLAY);
+      
+      setTodayTasks(sortedTasks);
+    } catch (error) {
+      console.log('Failed to fetch today tasks:', error);
+      setTodayTasks([]);
+    } finally {
+      setLoadingReminders(false);
+    }
+  }, [isAuthenticated]);
+
   // Fetch tasks when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       fetchMyTasks();
-    }, [fetchMyTasks])
+      fetchTodayTasks();
+    }, [fetchMyTasks, fetchTodayTasks])
   );
 
   const getGreeting = () => {
@@ -181,14 +227,22 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>Reminder</Text>
             <Text style={styles.sectionSubtitle}>Don't forget schedule</Text>
           </View>
-          {reminders.map((reminder) => (
-            <ReminderCard
-              key={reminder.id}
-              title={reminder.title}
-              time={reminder.time}
-              color={reminder.color}
-            />
-          ))}
+          {loadingReminders ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#2196F3" />
+            </View>
+          ) : todayTasks.length > 0 ? (
+            todayTasks.map((task, index) => (
+              <ReminderCard
+                key={task.id}
+                title={task.title}
+                time={formatTaskTime(task.createdAt)}
+                color={REMINDER_COLORS[index % REMINDER_COLORS.length]}
+              />
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No tasks for today</Text>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
